@@ -203,13 +203,15 @@ export default function CurrentMissionWidget({ filterMember = null }) {
                 <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Sparkles size={12} /> {isAr ? 'كود/برومبت الذكاء الاصطناعي المباشر' : 'RECOMMENDED AI PROMPT'}
                 </span>
-                <button
-                  onClick={handleCopyPrompt}
-                  className="btn-secondary"
-                  style={{ padding: '3px 8px', fontSize: '0.72rem', borderColor: copied ? 'var(--accent-green)' : undefined, color: copied ? 'var(--accent-green)' : undefined }}
-                >
-                  {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? (isAr ? 'تم النسخ!' : 'Copied!') : (isAr ? 'نسخ البرومبت' : 'Copy Prompt')}
-                </button>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    onClick={handleCopyPrompt}
+                    className="btn-secondary"
+                    style={{ padding: '3px 8px', fontSize: '0.72rem', borderColor: copied ? 'var(--accent-green)' : undefined, color: copied ? 'var(--accent-green)' : undefined }}
+                  >
+                    {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? (isAr ? 'تم النسخ!' : 'Copied!') : (isAr ? 'نسخ البرومبت' : 'Copy Prompt')}
+                  </button>
+                </div>
               </div>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: '1.4', maxHeight: showPrompt ? 'none' : '60px', overflow: 'hidden' }}>
                 "{currentStep.aiPrompt}"
