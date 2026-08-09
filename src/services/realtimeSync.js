@@ -3,7 +3,6 @@
 import { supabase, warRoomChannel } from './supabase';
 import { playSound } from './audioFeedback';
 
-// Request Browser Desktop Notification Permission politely
 export async function requestBrowserPermission() {
   if (typeof window === 'undefined' || !('Notification' in window)) {
     return false;
@@ -18,7 +17,6 @@ export async function requestBrowserPermission() {
   return false;
 }
 
-// Send Desktop Browser Notification (even when tab is minimized)
 export function sendDesktopNotification(title, body, icon = '/assets/NEXTAURA.png') {
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
     try {
@@ -34,20 +32,30 @@ export function sendDesktopNotification(title, body, icon = '/assets/NEXTAURA.pn
   }
 }
 
-// Broadcast Realtime Handoff Event across tabs and laptops via Supabase & BroadcastChannel
-export function broadcastHandoffEvent(eventData) {
-  // 1. Broadcast via local BroadcastChannel (instant same-browser cross-tab)
+// Save notification directly into Supabase PostgreSQL database
+export async function pushSupabaseNotification(title, message, type = 'info', sender = 'System') {
+  const notifObj = {
+    id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+    title,
+    message,
+    type,
+    sender,
+    created_at: new Date().toISOString()
+  };
+
+  // 1. Broadcast via local tab channel
   if (warRoomChannel) {
-    warRoomChannel.postMessage(eventData);
+    warRoomChannel.postMessage({ type: 'NEW_NOTIFICATION', notification: notifObj });
   }
 
-  // 2. Broadcast via Supabase Realtime Channel (cross-laptop worldwide)
+  // 2. Save into Supabase Database for cross-laptop realtime broadcast
   if (supabase) {
-    const channel = supabase.channel('nextaura_warroom_realtime');
-    channel.send({
-      type: 'broadcast',
-      event: 'handoff_event',
-      payload: eventData
-    });
+    try {
+      await supabase.from('notifications').insert([notifObj]);
+    } catch (err) {
+      console.warn('Supabase DB notification insert warning:', err);
+    }
   }
+
+  return notifObj;
 }

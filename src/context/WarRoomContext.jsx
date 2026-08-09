@@ -3,7 +3,7 @@ import { INITIAL_COMPETITION, INITIAL_TASKS, INITIAL_EXPERIMENTS, INITIAL_SUBMIS
 import { INITIAL_GUIDED_STEPS, PIPELINE_PHASES } from '../config/guidedPipelineData';
 import { TRANSLATIONS } from '../config/translations';
 import { playSound } from '../services/audioFeedback';
-import { sendDesktopNotification, requestBrowserPermission } from '../services/realtimeSync';
+import { sendDesktopNotification, pushSupabaseNotification, requestBrowserPermission } from '../services/realtimeSync';
 import { supabase, warRoomChannel } from '../services/supabase';
 
 const WarRoomContext = createContext();
@@ -11,10 +11,9 @@ const WarRoomContext = createContext();
 export function WarRoomProvider({ children }) {
   const [lang, setLang] = useState(() => localStorage.getItem('nextaura_lang') || 'en');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('nextaura_sound') !== 'false');
-
   const [activeStation, setActiveStation] = useState('station_select');
 
-  // Core telemetry state
+  // Telemetry state
   const [competition, setCompetition] = useState(INITIAL_COMPETITION);
   const [tasks, setTasks] = useState(INITIAL_TASKS);
   const [experiments, setExperiments] = useState(INITIAL_EXPERIMENTS);
@@ -25,11 +24,11 @@ export function WarRoomProvider({ children }) {
   const [activityFeed, setActivityFeed] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
-  // Guided Competition Mode State (38 Steps)
+  // Guided Pipeline Steps (38 Steps)
   const [guidedSteps, setGuidedSteps] = useState(INITIAL_GUIDED_STEPS);
   const [bestCvModal, setBestCvModal] = useState(null);
 
-  // Sync Document Direction for RTL/LTR
+  // Synchronize Document Direction (RTL / LTR)
   useEffect(() => {
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
@@ -40,6 +39,53 @@ export function WarRoomProvider({ children }) {
     localStorage.setItem('nextaura_sound', soundEnabled);
   }, [soundEnabled]);
 
+  // SUPABASE REALTIME SUBSCRIPTION FOR CROSS-LAPTOP NOTIFICATIONS
+  useEffect(() => {
+    if (!supabase) return;
+
+    // Fetch initial notifications from database
+    supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(20)
+      .then(({ data, error }) => {
+        if (data && data.length > 0) {
+          setNotifications(data);
+        }
+      });
+
+    // Realtime Postgres Change Listener on notifications table
+    const notifChannel = supabase
+      .channel('public_notifications_realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
+        const notif = payload.new;
+        setNotifications(prev => {
+          if (prev.some(n => n.id === notif.id)) return prev;
+          return [notif, ...prev];
+        });
+
+        if (soundEnabled) {
+          playSound(notif.type === 'error' ? 'blocker' : notif.type === 'success' ? 'approval' : 'handoff');
+        }
+        sendDesktopNotification(notif.title, notif.message);
+      })
+      .subscribe();
+
+    // BroadcastChannel for instant same-browser tabs sync
+    if (warRoomChannel) {
+      warRoomChannel.onmessage = (e) => {
+        if (e.data && e.data.type === 'NEW_NOTIFICATION') {
+          const notif = e.data.notification;
+          setNotifications(prev => {
+            if (prev.some(n => n.id === notif.id)) return prev;
+            return [notif, ...prev];
+          });
+        }
+      };
+    }
+
+    return () => {
+      supabase.removeChannel(notifChannel);
+    };
+  }, [soundEnabled]);
+
   const toggleLanguage = () => {
     setLang(prev => (prev === 'en' ? 'ar' : 'en'));
   };
@@ -48,12 +94,20 @@ export function WarRoomProvider({ children }) {
     setSoundEnabled(prev => !prev);
   };
 
-  const addNotification = (title, message, type = 'info') => {
-    const id = Date.now();
-    setNotifications(prev => [...prev, { id, title, message, type }]);
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 5000);
+  const addNotification = (title, message, type = 'info', sender = 'System') => {
+    // 1. Add locally
+    const notifObj = {
+      id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      title,
+      message,
+      type,
+      sender,
+      created_at: new Date().toISOString()
+    };
+    setNotifications(prev => [notifObj, ...prev]);
+
+    // 2. Push to Supabase Database for cross-laptop realtime broadcast
+    pushSupabaseNotification(title, message, type, sender);
   };
 
   const addActivity = (user, action, details) => {
@@ -67,9 +121,8 @@ export function WarRoomProvider({ children }) {
     setActivityFeed(prev => [entry, ...prev]);
   };
 
-  // --- GUIDED COMPETITION GPS CONTROLS ---
+  // --- GUIDED STEP COMPLETION & HANDOFF ---
   const completeStep = (stepId, memberName) => {
-    let newlyUnlockedStep = null;
     let handoffMsg = '';
 
     setGuidedSteps(prevSteps => {
@@ -81,14 +134,12 @@ export function WarRoomProvider({ children }) {
         return s;
       });
 
-      // Recalculate unlocks
       const doneIds = new Set(updated.filter(s => s.status === 'DONE').map(s => s.id));
 
       return updated.map(s => {
         if (s.status === 'LOCKED' && s.dependsOn.length > 0) {
           const allDependenciesDone = s.dependsOn.every(dId => doneIds.has(dId));
           if (allDependenciesDone) {
-            newlyUnlockedStep = s;
             return { ...s, status: 'READY' };
           }
         }
@@ -100,7 +151,7 @@ export function WarRoomProvider({ children }) {
       playSound('approval');
     }
 
-    addNotification('✅ Step Completed!', handoffMsg, 'success');
+    addNotification('✅ Step Completed!', handoffMsg, 'success', memberName);
     sendDesktopNotification('✅ NextAura Handoff Alert', handoffMsg);
     addActivity(memberName, 'Completed Guided Step', `Step ${stepId} marked done.`);
   };
@@ -108,7 +159,6 @@ export function WarRoomProvider({ children }) {
   const markStepBlocked = (stepId, reason, owner = 'Team Leader') => {
     setGuidedSteps(prev => prev.map(s => s.id === stepId ? { ...s, status: 'BLOCKED', blockedReason: reason } : s));
 
-    // Add to blocker center
     const newBlocker = {
       id: `blk_${Date.now()}`,
       title: `GPS Step ${stepId} Blocked`,
@@ -123,11 +173,10 @@ export function WarRoomProvider({ children }) {
       playSound('blocker');
     }
 
-    addNotification('🚨 GPS STEP BLOCKED!', `Step ${stepId} flagged blocked: ${reason}`, 'error');
+    addNotification('🚨 GPS STEP BLOCKED!', `Step ${stepId} flagged blocked: ${reason}`, 'error', owner);
     sendDesktopNotification('🚨 GPS STEP BLOCKED!', `Step ${stepId} flagged blocked: ${reason}`);
   };
 
-  // --- LOG EXPERIMENT & NEW BEST CV EVENT ---
   const addExperiment = (expData) => {
     const newExp = {
       id: `EXP-${String(experiments.length + 1).padStart(3, '0')}`,
@@ -135,7 +184,6 @@ export function WarRoomProvider({ children }) {
       ...expData
     };
 
-    // Check if new best CV
     const previousBestCv = experiments.length ? Math.max(...experiments.map(e => e.cvScore || 0)) : 0;
     const isNewBest = newExp.cvScore > previousBestCv;
 
@@ -150,10 +198,10 @@ export function WarRoomProvider({ children }) {
         newCv: newExp.cvScore,
         gain: (newExp.cvScore - previousBestCv).toFixed(4)
       });
-      addNotification('🏆 NEW BEST CV ACHIEVED!', `${newExp.model} hit CV: ${newExp.cvScore}`, 'success');
+      addNotification('🏆 NEW BEST CV ACHIEVED!', `${newExp.model} hit CV: ${newExp.cvScore}`, 'success', expData.owner || 'Mohannad');
     } else {
       if (soundEnabled) playSound('handoff');
-      addNotification('🧪 Experiment Logged', `${newExp.id} added with CV: ${newExp.cvScore}`, 'info');
+      addNotification('🧪 Experiment Logged', `${newExp.id} added with CV: ${newExp.cvScore}`, 'info', expData.owner || 'Mohannad');
     }
 
     addActivity(expData.owner || 'Mohannad', 'Logged Experiment', `${newExp.id} (${newExp.model}) — CV: ${newExp.cvScore}`);
