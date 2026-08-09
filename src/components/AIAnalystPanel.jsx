@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWarRoom } from '../context/WarRoomContext';
-import { queryFrontierAI, generateAnalystResponse } from '../services/aiAnalyst';
-import { Bot, Sparkles, RefreshCw, Key, Check, Cpu, Zap, Dna, ShieldAlert, TrendingUp } from 'lucide-react';
+import { queryFrontierAI, generateAnalystResponse, calculateTelemetryScores } from '../services/aiAnalyst';
+import { Bot, Sparkles, RefreshCw, Key, Check, Cpu, Code, Dna, Copy, ShieldCheck, Activity, AlertTriangle } from 'lucide-react';
 
 export default function AIAnalystPanel() {
   const warRoomState = useWarRoom();
@@ -15,6 +15,9 @@ export default function AIAnalystPanel() {
   const [isThinking, setIsThinking] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('nextaura_gemini_key') || '');
   const [showKeyModal, setShowKeyModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const scores = calculateTelemetryScores(warRoomState);
 
   useEffect(() => {
     setAiOutput(generateAnalystResponse(activeQuery, warRoomState, lang));
@@ -44,15 +47,21 @@ export default function AIAnalystPanel() {
     setCustomPrompt('');
   };
 
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(aiOutput);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const saveKey = () => {
     localStorage.setItem('nextaura_gemini_key', apiKey);
     setShowKeyModal(false);
-    warRoomState.addNotification('AI Key Saved 🔑', 'Frontier AI model inference connected.', 'success');
+    warRoomState.addNotification('AI Key Saved 🔑', 'Frontier AI connected.', 'success');
   };
 
   return (
     <div className="glass-panel" style={{ padding: '28px', borderTop: '4px solid var(--accent-cyan)' }}>
-      {/* Top Bar Header */}
+      {/* Top Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
@@ -73,11 +82,11 @@ export default function AIAnalystPanel() {
                 {t.aiAnalystTitle}
               </h3>
               <span className="badge badge-cyan" style={{ fontSize: '0.65rem' }}>
-                <Cpu size={12} /> GRANDMASTER ENGINE
+                <Cpu size={12} /> GRANDMASTER CODE & STRATEGY ENGINE
               </span>
             </div>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              {isAr ? 'محلل الاستراتيجية التنافسية وبناء النماذج المتقدم' : 'Elite Competition AI Strategist & Telemetry Intelligence'}
+              {isAr ? 'المحلل والمولد الآلي لأكواد المسابقات والتكتيكات التنافسية' : 'Elite Competition AI Strategist & Automated Code Generator'}
             </p>
           </div>
         </div>
@@ -112,6 +121,33 @@ export default function AIAnalystPanel() {
         </div>
       </div>
 
+      {/* Realtime Telemetry Diagnostic Gauges */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+        <div style={{ background: 'rgba(21, 31, 54, 0.6)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>TEAM VELOCITY</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--accent-cyan)' }}>⚡ {scores.velocityScore}%</span>
+        </div>
+
+        <div style={{ background: 'rgba(21, 31, 54, 0.6)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>LEAKAGE RISK SCORE</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: '800', color: scores.leakageScore > 40 ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+            🛡️ {scores.leakageScore}%
+          </span>
+        </div>
+
+        <div style={{ background: 'rgba(21, 31, 54, 0.6)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>OVERFITTING PROBABILITY</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: '800', color: scores.overfittingScore > 30 ? 'var(--accent-amber)' : 'var(--accent-green)' }}>
+            📈 {scores.overfittingScore}%
+          </span>
+        </div>
+
+        <div style={{ background: 'rgba(21, 31, 54, 0.6)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>MODEL DIVERSITY</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--accent-purple)' }}>🧬 {scores.diversityScore}%</span>
+        </div>
+      </div>
+
       {/* Action Buttons */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
         <button
@@ -126,6 +162,34 @@ export default function AIAnalystPanel() {
           }}
         >
           🧠 {t.btnAnalyze}
+        </button>
+
+        <button
+          onClick={() => handleAction('GENERATE_CODE')}
+          className="btn-secondary"
+          style={{
+            fontSize: '0.8rem',
+            padding: '8px 14px',
+            borderColor: activeQuery === 'GENERATE_CODE' ? 'var(--accent-green)' : undefined,
+            color: activeQuery === 'GENERATE_CODE' ? 'var(--accent-green)' : undefined,
+            background: activeQuery === 'GENERATE_CODE' ? 'rgba(16, 185, 129, 0.12)' : undefined
+          }}
+        >
+          🐍 {isAr ? 'توليد كود Python جاهز' : 'Generate Python Baseline Code'}
+        </button>
+
+        <button
+          onClick={() => handleAction('ENSEMBLE_GEN')}
+          className="btn-secondary"
+          style={{
+            fontSize: '0.8rem',
+            padding: '8px 14px',
+            borderColor: activeQuery === 'ENSEMBLE_GEN' ? 'var(--accent-purple)' : undefined,
+            color: activeQuery === 'ENSEMBLE_GEN' ? 'var(--accent-purple)' : undefined,
+            background: activeQuery === 'ENSEMBLE_GEN' ? 'rgba(168, 85, 247, 0.12)' : undefined
+          }}
+        >
+          🧬 {isAr ? 'كود دمج النماذج Ensemble' : 'Generate Ensemble Code'}
         </button>
 
         <button
@@ -157,20 +221,6 @@ export default function AIAnalystPanel() {
         </button>
 
         <button
-          onClick={() => handleAction('ENSEMBLE_GEN')}
-          className="btn-secondary"
-          style={{
-            fontSize: '0.8rem',
-            padding: '8px 14px',
-            borderColor: activeQuery === 'ENSEMBLE_GEN' ? 'var(--accent-purple)' : undefined,
-            color: activeQuery === 'ENSEMBLE_GEN' ? 'var(--accent-purple)' : undefined,
-            background: activeQuery === 'ENSEMBLE_GEN' ? 'rgba(168, 85, 247, 0.12)' : undefined
-          }}
-        >
-          🧬 {isAr ? 'استراتيجية الـ Ensemble' : 'Ensemble Strategy'}
-        </button>
-
-        <button
           onClick={() => handleAction('HOW_TO_IMPROVE')}
           className="btn-secondary"
           style={{
@@ -181,19 +231,6 @@ export default function AIAnalystPanel() {
           }}
         >
           📈 {t.btnImprove}
-        </button>
-
-        <button
-          onClick={() => handleAction('WORKLOAD_BALANCE')}
-          className="btn-secondary"
-          style={{
-            fontSize: '0.8rem',
-            padding: '8px 14px',
-            borderColor: activeQuery === 'WORKLOAD_BALANCE' ? 'var(--accent-amber)' : undefined,
-            color: activeQuery === 'WORKLOAD_BALANCE' ? 'var(--accent-amber)' : undefined
-          }}
-        >
-          ⚖️ {t.btnWorkload}
         </button>
       </div>
 
@@ -210,6 +247,17 @@ export default function AIAnalystPanel() {
           <Sparkles size={18} /> {t.askAiBtn}
         </button>
       </form>
+
+      {/* Top Output Bar with Copy Code button */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+        <button
+          onClick={handleCopyCode}
+          className="btn-secondary"
+          style={{ padding: '4px 10px', fontSize: '0.78rem', borderColor: copied ? 'var(--accent-green)' : undefined, color: copied ? 'var(--accent-green)' : undefined }}
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? (isAr ? 'تم النسخ!' : 'Copied!') : (isAr ? '📋 نسخ الكود والتحليل' : '📋 Copy Analysis & Code')}
+        </button>
+      </div>
 
       {/* Output Display Box */}
       <div 
@@ -229,7 +277,7 @@ export default function AIAnalystPanel() {
         {isThinking ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--accent-cyan)', padding: '24px 0', fontSize: '1rem' }}>
             <Sparkles size={24} className="animate-pulse-glow" /> 
-            {isAr ? 'جاري تحليل كامل بيانات الفريق وتجهيز التوصيات الاستراتيجية...' : 'Analyzing full multi-station telemetry & calculating Grandmaster strategy...'}
+            {isAr ? 'جاري تحليل كامل بيانات الفريق وتوليد الأكواد الاستراتيجية...' : 'Calculating Grandmaster telemetry & generating Python code snippets...'}
           </div>
         ) : (
           aiOutput
