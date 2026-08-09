@@ -1,5 +1,5 @@
 -- ========================================================
--- ⚡ NextAura AI Competition War Room — Supabase Database Schema
+-- ⚡ NextAura AI Competition War Room — Idempotent Safe SQL Schema
 -- Run this script inside Supabase SQL Editor:
 -- https://supabase.com/dashboard/project/xdkotswhqmelovhbiwwg/sql/new
 -- ========================================================
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS public.guided_steps (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 10. REALTIME NOTIFICATIONS TABLE (Synchronized across all 3 laptops)
+-- 10. REALTIME NOTIFICATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.notifications (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 );
 
 -- ========================================================
--- ENABLE ROW LEVEL SECURITY (RLS) & PUBLIC ACCESS POLICIES
+-- ENABLE ROW LEVEL SECURITY (RLS)
 -- ========================================================
 ALTER TABLE public.competitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
@@ -138,7 +138,20 @@ ALTER TABLE public.activity_feed ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.guided_steps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
--- Allow anonymous public read/write access for real-time collaboration
+-- ========================================================
+-- SAFE POLICIES (DROP EXISTING FIRST TO PREVENT 42710 ERROR)
+-- ========================================================
+DROP POLICY IF EXISTS "Allow public read/write competitions" ON public.competitions;
+DROP POLICY IF EXISTS "Allow public read/write tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Allow public read/write experiments" ON public.experiments;
+DROP POLICY IF EXISTS "Allow public read/write submissions" ON public.submissions;
+DROP POLICY IF EXISTS "Allow public read/write blockers" ON public.blockers;
+DROP POLICY IF EXISTS "Allow public read/write team_notes" ON public.team_notes;
+DROP POLICY IF EXISTS "Allow public read/write reports" ON public.reports;
+DROP POLICY IF EXISTS "Allow public read/write activity_feed" ON public.activity_feed;
+DROP POLICY IF EXISTS "Allow public read/write guided_steps" ON public.guided_steps;
+DROP POLICY IF EXISTS "Allow public read/write notifications" ON public.notifications;
+
 CREATE POLICY "Allow public read/write competitions" ON public.competitions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read/write tasks" ON public.tasks FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read/write experiments" ON public.experiments FOR ALL USING (true) WITH CHECK (true);
@@ -151,15 +164,56 @@ CREATE POLICY "Allow public read/write guided_steps" ON public.guided_steps FOR 
 CREATE POLICY "Allow public read/write notifications" ON public.notifications FOR ALL USING (true) WITH CHECK (true);
 
 -- ========================================================
--- ENABLE SUPABASE REALTIME REPLICATION (CRITICAL FOR CROSS-LAPTOP SYNC)
+-- SAFE REALTIME REPLICATION SETUP (PREVENTS DUPLICATE ERRORS)
 -- ========================================================
-ALTER PUBLICATION supabase_realtime ADD TABLE public.competitions;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.tasks;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.experiments;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.submissions;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.blockers;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.team_notes;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.reports;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.activity_feed;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.guided_steps;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'notifications'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'competitions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.competitions;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'tasks'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tasks;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'experiments'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.experiments;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'submissions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.submissions;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'blockers'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.blockers;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'guided_steps'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.guided_steps;
+  END IF;
+END $$;
