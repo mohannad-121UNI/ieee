@@ -10,6 +10,10 @@ import AIAnalystPanel from '../components/AIAnalystPanel';
 import FinalSubmissionModal from '../components/FinalSubmissionModal';
 import GoldenRules from '../components/GoldenRules';
 import TeamWorkflow from '../components/TeamWorkflow';
+import CurrentMissionWidget from '../components/CurrentMissionWidget';
+import EndgameBanner from '../components/EndgameBanner';
+import BestCvModal from '../components/BestCvModal';
+import PipelineVisualizer from '../components/PipelineVisualizer';
 import { AI_TOOLS } from '../config/aiTools';
 import { Zap, Award, Edit3, Save, ExternalLink } from 'lucide-react';
 
@@ -43,6 +47,9 @@ export default function TeamHQPage() {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      <EndgameBanner />
+      <CurrentMissionWidget />
+
       {/* Header Banner */}
       <div 
         className="glass-panel"

@@ -1,92 +1,77 @@
 import React, { useState } from 'react';
-import { MEMBER_CONFIG } from '../config/aiTools';
-import AIArsenalCard from '../components/AIArsenalCard';
+import { useWarRoom } from '../context/WarRoomContext';
 import TaskChecklist from '../components/TaskChecklist';
+import AIArsenalCard from '../components/AIArsenalCard';
 import DataReportModal from '../components/DataReportModal';
-import { Database, Sparkles, Send, FileSpreadsheet } from 'lucide-react';
+import CurrentMissionWidget from '../components/CurrentMissionWidget';
+import EndgameBanner from '../components/EndgameBanner';
+import { Database, FileText } from 'lucide-react';
 
 export default function MoayadPage() {
-  const member = MEMBER_CONFIG.moayad;
+  const { lang, t } = useWarRoom();
   const [showReportModal, setShowReportModal] = useState(false);
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-      {/* Moayad Banner */}
+      <EndgameBanner />
+      <CurrentMissionWidget filterMember="moayad" />
+
+      {/* Header Banner */}
       <div 
         className="glass-panel"
         style={{
-          padding: '32px',
+          padding: '28px',
           background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(0, 240, 255, 0.08))',
           borderTop: '4px solid var(--accent-green)',
           display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          gap: '24px',
-          flexWrap: 'wrap'
+          flexWrap: 'wrap',
+          gap: '20px'
         }}
       >
-        <div className="avatar-frame avatar-frame-green" style={{ width: '90px', height: '90px' }}>
-          <img 
-            src="/assets/moayad.jpg" 
-            alt="Moayad" 
-            className="avatar-img"
-            onError={(e) => { e.target.src = '/assets/moayad.png'; }}
-          />
-        </div>
-
-        <div style={{ flexGrow: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span className="badge badge-green">
-              <Database size={12} /> Data Intelligence Officer
-            </span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Station #2</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '24px',
+            overflow: 'hidden',
+            border: '2px solid var(--accent-green)',
+            boxShadow: '0 0 25px rgba(16, 185, 129, 0.4)'
+          }}>
+            <img 
+              src="/assets/moayad.jpg" 
+              alt="Moayad" 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              onError={(e) => { e.target.src = '/assets/moayad.png'; }}
+            />
           </div>
-
-          <h1 style={{ fontSize: '2.2rem', fontWeight: '900', marginTop: '4px' }}>
-            📊 Moayad — Data Intelligence Lab
-          </h1>
-
-          <p style={{ fontSize: '1rem', color: 'var(--accent-green)', fontWeight: '600', marginTop: '4px' }}>
-            {member.subtitle}
-          </p>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
-            {member.responsibilities.map((r, i) => (
-              <span key={i} style={{ fontSize: '0.78rem', background: 'rgba(21, 31, 54, 0.8)', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
-                {r}
-              </span>
-            ))}
+          <div>
+            <h1 style={{ fontSize: '2rem', fontWeight: '900' }}>
+              📊 Moayad — <span className="gradient-text-green">{t.moayadRole}</span>
+            </h1>
+            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              {t.moayadSub}
+            </p>
           </div>
         </div>
 
-        {/* Send Data Report Button */}
         <button
           onClick={() => setShowReportModal(true)}
           className="btn-primary"
-          style={{
-            background: 'linear-gradient(135deg, #10B981 0%, #00F0FF 100%)',
-            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)',
-            padding: '12px 20px'
-          }}
+          style={{ padding: '12px 24px', fontSize: '0.95rem', background: 'linear-gradient(135deg, #10B981, #00F0FF)' }}
         >
-          <Send size={18} /> 📤 SEND DATA REPORT TO TEAM HQ
+          <FileText size={18} /> {t.sendDataReport}
         </button>
       </div>
 
-      {/* AI Arsenal */}
-      <div>
-        <h3 style={{ fontSize: '1.2rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Sparkles size={20} color="var(--accent-green)" /> 📊 Moayad's AI Arsenal
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-          {member.aiTools.map((toolKey) => (
-            <AIArsenalCard key={toolKey} toolKey={toolKey} />
-          ))}
-        </div>
-      </div>
+      {/* Primary AI Arsenal Tool */}
+      <AIArsenalCard memberKey="moayad" />
 
-      {/* Sequential Task Checklist */}
-      <TaskChecklist memberId="moayad" memberName="Moayad (Data Officer)" />
+      {/* Tasks Checklist */}
+      <TaskChecklist memberId="moayad" memberName="Moayad" />
 
+      {/* Data Report Modal */}
       <DataReportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} />
     </div>
   );

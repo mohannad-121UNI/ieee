@@ -6,7 +6,9 @@ import TeamHQPage from './pages/TeamHQPage';
 import MohannadPage from './pages/MohannadPage';
 import MoayadPage from './pages/MoayadPage';
 import DyaaPage from './pages/DyaaPage';
+import PipelineVisualizer from './components/PipelineVisualizer';
 import AIChatModal from './components/AIChatModal';
+import BestCvModal from './components/BestCvModal';
 
 function AppContent() {
   const { activeStation, notifications } = useWarRoom();
@@ -55,6 +57,7 @@ function AppContent() {
         <>
           <Navbar />
           <main style={{ flexGrow: 1 }}>
+            {activeStation === 'pipeline' && <PipelineVisualizer />}
             {activeStation === 'team_hq' && <TeamHQPage />}
             {activeStation === 'mohannad' && <MohannadPage />}
             {activeStation === 'moayad' && <MoayadPage />}
@@ -63,8 +66,11 @@ function AppContent() {
         </>
       )}
 
-      {/* Floating Interactive Live AI Chat Modal (Powered by Gemini) */}
+      {/* Floating Interactive Live AI Chat Modal */}
       <AIChatModal />
+
+      {/* New Best CV Event Modal */}
+      <BestCvModal />
     </div>
   );
 }

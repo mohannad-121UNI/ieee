@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useWarRoom } from '../context/WarRoomContext';
 import CompetitionTimer from './CompetitionTimer';
 import UserGuideModal from './UserGuideModal';
-import { Globe, Users, Shield, Cpu, ExternalLink, BookOpen } from 'lucide-react';
+import { Globe, Users, Shield, Cpu, Compass, BookOpen, Volume2, VolumeX } from 'lucide-react';
 
 export default function Navbar() {
-  const { activeStation, setStation, lang, toggleLanguage, t } = useWarRoom();
+  const { activeStation, setStation, lang, toggleLanguage, soundEnabled, toggleSound, t } = useWarRoom();
   const [showGuide, setShowGuide] = useState(false);
 
   const isAr = lang === 'ar';
@@ -63,6 +63,20 @@ export default function Navbar() {
         {/* Station Navigation Tabs */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <button
+            onClick={() => setStation('pipeline')}
+            className={`btn-secondary ${activeStation === 'pipeline' ? 'active' : ''}`}
+            style={{
+              fontSize: '0.85rem',
+              padding: '8px 14px',
+              borderColor: activeStation === 'pipeline' ? 'var(--accent-cyan)' : undefined,
+              color: activeStation === 'pipeline' ? 'var(--accent-cyan)' : undefined,
+              background: activeStation === 'pipeline' ? 'rgba(0, 240, 255, 0.12)' : undefined
+            }}
+          >
+            <Compass size={15} className="animate-pulse-glow" /> {isAr ? '🗺️ خريطة الـ GPS (38 خطوة)' : '🗺️ Pipeline GPS'}
+          </button>
+
+          <button
             onClick={() => setStation('team_hq')}
             className={`btn-secondary ${activeStation === 'team_hq' ? 'active' : ''}`}
             style={{
@@ -115,9 +129,19 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Competition Timer & Guide & Language Switcher */}
+        {/* Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <CompetitionTimer />
+
+          {/* Sound Toggle */}
+          <button
+            onClick={toggleSound}
+            className="btn-secondary"
+            style={{ padding: '8px', fontSize: '0.82rem', borderColor: soundEnabled ? 'var(--accent-green)' : undefined }}
+            title={soundEnabled ? 'Sound ON' : 'Sound OFF'}
+          >
+            {soundEnabled ? <Volume2 size={16} color="var(--accent-green)" /> : <VolumeX size={16} color="var(--text-dim)" />}
+          </button>
 
           {/* User Guide Button */}
           <button
@@ -130,7 +154,7 @@ export default function Navbar() {
               color: 'var(--accent-cyan)'
             }}
           >
-            <BookOpen size={15} /> {isAr ? '📖 دليل الاستخدام' : '📖 User Guide'}
+            <BookOpen size={15} /> {isAr ? '📖 الدليل' : '📖 Guide'}
           </button>
 
           {/* Language Toggle Button */}

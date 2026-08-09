@@ -1,356 +1,218 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import {
-  INITIAL_COMPETITION,
-  INITIAL_TASKS,
-  INITIAL_EXPERIMENTS,
-  INITIAL_SUBMISSIONS,
-  INITIAL_BLOCKERS,
-  INITIAL_NOTES,
-  INITIAL_ACTIVITIES
-} from '../config/initialData';
+import { INITIAL_COMPETITION, INITIAL_TASKS, INITIAL_EXPERIMENTS, INITIAL_SUBMISSIONS, INITIAL_BLOCKERS, INITIAL_NOTES } from '../config/initialData';
+import { INITIAL_GUIDED_STEPS, PIPELINE_PHASES } from '../config/guidedPipelineData';
 import { TRANSLATIONS } from '../config/translations';
-import { supabase, isSupabaseConfigured, warRoomChannel } from '../services/supabase';
+import { playSound } from '../services/audioFeedback';
+import { supabase, warRoomChannel } from '../services/supabase';
 
 const WarRoomContext = createContext();
 
-const STORAGE_KEY = 'nextaura_warroom_state_v3';
+export function WarRoomProvider({ children }) {
+  const [lang, setLang] = useState(() => localStorage.getItem('nextaura_lang') || 'en');
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('nextaura_sound') !== 'false');
 
-export const WarRoomProvider = ({ children }) => {
-  // Language State: 'en' | 'ar'
-  const [lang, setLangState] = useState(() => {
-    return localStorage.getItem('nextaura_lang') || 'en';
-  });
+  const [activeStation, setActiveStation] = useState('station_select');
 
-  const setLang = (newLang) => {
-    setLangState(newLang);
-    localStorage.setItem('nextaura_lang', newLang);
-    if (typeof document !== 'undefined') {
-      document.documentElement.dir = newLang === 'ar' ? 'rtl' : 'ltr';
-      document.documentElement.lang = newLang;
-    }
-  };
-
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-      document.documentElement.lang = lang;
-    }
-  }, [lang]);
-
-  const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
-
-  // Station State
-  const [activeStation, setActiveStation] = useState(() => {
-    return localStorage.getItem('nextaura_active_station') || 'station_select';
-  });
-
-  // Data States
-  const [competition, setCompetition] = useState(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_comp`);
-    return saved ? JSON.parse(saved) : INITIAL_COMPETITION;
-  });
-
-  const [tasks, setTasks] = useState(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_tasks`);
-    return saved ? JSON.parse(saved) : INITIAL_TASKS;
-  });
-
-  const [experiments, setExperiments] = useState(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_exps`);
-    return saved ? JSON.parse(saved) : INITIAL_EXPERIMENTS;
-  });
-
-  const [submissions, setSubmissions] = useState(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_subs`);
-    return saved ? JSON.parse(saved) : INITIAL_SUBMISSIONS;
-  });
-
-  const [blockers, setBlockers] = useState(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_blockers`);
-    return saved ? JSON.parse(saved) : INITIAL_BLOCKERS;
-  });
-
-  const [notes, setNotes] = useState(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_notes`);
-    return saved ? JSON.parse(saved) : INITIAL_NOTES;
-  });
-
-  const [activities, setActivities] = useState(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_activities`);
-    return saved ? JSON.parse(saved) : INITIAL_ACTIVITIES;
-  });
-
-  const [reports, setReports] = useState(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_reports`);
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // Notifications State
+  // Core telemetry state
+  const [competition, setCompetition] = useState(INITIAL_COMPETITION);
+  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [experiments, setExperiments] = useState(INITIAL_EXPERIMENTS);
+  const [submissions, setSubmissions] = useState(INITIAL_SUBMISSIONS);
+  const [blockers, setBlockers] = useState(INITIAL_BLOCKERS);
+  const [notes, setNotes] = useState(INITIAL_NOTES);
+  const [reports, setReports] = useState([]);
+  const [activityFeed, setActivityFeed] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
-  // Auto-save to LocalStorage & broadcast
+  // Guided Competition Mode State (38 Steps)
+  const [guidedSteps, setGuidedSteps] = useState(INITIAL_GUIDED_STEPS);
+  const [bestCvModal, setBestCvModal] = useState(null);
+
+  // Sync Document Direction for RTL/LTR
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY}_comp`, JSON.stringify(competition));
-    localStorage.setItem(`${STORAGE_KEY}_tasks`, JSON.stringify(tasks));
-    localStorage.setItem(`${STORAGE_KEY}_exps`, JSON.stringify(experiments));
-    localStorage.setItem(`${STORAGE_KEY}_subs`, JSON.stringify(submissions));
-    localStorage.setItem(`${STORAGE_KEY}_blockers`, JSON.stringify(blockers));
-    localStorage.setItem(`${STORAGE_KEY}_notes`, JSON.stringify(notes));
-    localStorage.setItem(`${STORAGE_KEY}_activities`, JSON.stringify(activities));
-    localStorage.setItem(`${STORAGE_KEY}_reports`, JSON.stringify(reports));
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = lang;
+    localStorage.setItem('nextaura_lang', lang);
+  }, [lang]);
 
-    if (warRoomChannel) {
-      warRoomChannel.postMessage({
-        type: 'STATE_UPDATE',
-        payload: { competition, tasks, experiments, submissions, blockers, notes, activities, reports }
-      });
-    }
-  }, [competition, tasks, experiments, submissions, blockers, notes, activities, reports]);
-
-  // Listen to BroadcastChannel updates
   useEffect(() => {
-    if (!warRoomChannel) return;
-    const handleMessage = (event) => {
-      if (event.data && event.data.type === 'STATE_UPDATE') {
-        const { payload } = event.data;
-        if (payload.competition) setCompetition(payload.competition);
-        if (payload.tasks) setTasks(payload.tasks);
-        if (payload.experiments) setExperiments(payload.experiments);
-        if (payload.submissions) setSubmissions(payload.submissions);
-        if (payload.blockers) setBlockers(payload.blockers);
-        if (payload.notes) setNotes(payload.notes);
-        if (payload.activities) setActivities(payload.activities);
-        if (payload.reports) setReports(payload.reports);
-      }
-    };
-    warRoomChannel.addEventListener('message', handleMessage);
-    return () => warRoomChannel.removeEventListener('message', handleMessage);
-  }, []);
+    localStorage.setItem('nextaura_sound', soundEnabled);
+  }, [soundEnabled]);
 
-  const changeStation = (stationId) => {
-    setActiveStation(stationId);
-    localStorage.setItem('nextaura_active_station', stationId);
+  const toggleLanguage = () => {
+    setLang(prev => (prev === 'en' ? 'ar' : 'en'));
   };
 
-  const resetWarRoom = () => {
-    setCompetition(INITIAL_COMPETITION);
-    setTasks(INITIAL_TASKS);
-    setExperiments(INITIAL_EXPERIMENTS);
-    setSubmissions(INITIAL_SUBMISSIONS);
-    setBlockers(INITIAL_BLOCKERS);
-    setNotes(INITIAL_NOTES);
-    setActivities(INITIAL_ACTIVITIES);
-    setReports([]);
-    localStorage.clear();
-    addNotification('War Room Reset 🔄', 'All telemetry cleared.', 'info');
+  const toggleSound = () => {
+    setSoundEnabled(prev => !prev);
   };
 
   const addNotification = (title, message, type = 'info') => {
     const id = Date.now();
-    setNotifications((prev) => [{ id, title, message, type }, ...prev].slice(0, 5));
+    setNotifications(prev => [...prev, { id, title, message, type }]);
     setTimeout(() => {
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-    }, 4500);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
   };
 
-  const logActivity = (member, action) => {
-    const newActivity = {
-      id: `ACT-${Date.now()}`,
-      member,
+  const addActivity = (user, action, details) => {
+    const entry = {
+      id: Date.now(),
+      user,
       action,
-      timestamp: new Date().toISOString()
+      details,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
-    setActivities((prev) => [newActivity, ...prev].slice(0, 50));
+    setActivityFeed(prev => [entry, ...prev]);
+  };
+
+  // --- GUIDED COMPETITION GPS CONTROLS ---
+  const completeStep = (stepId, memberName) => {
+    let newlyUnlockedStep = null;
+    let handoffMsg = '';
+
+    setGuidedSteps(prevSteps => {
+      const updated = prevSteps.map(s => {
+        if (s.id === stepId) {
+          handoffMsg = lang === 'ar' ? s.handoffMessageAr : s.handoffMessageEn;
+          return { ...s, status: 'DONE', completedAt: new Date().toISOString() };
+        }
+        return s;
+      });
+
+      // Recalculate unlocks
+      const doneIds = new Set(updated.filter(s => s.status === 'DONE').map(s => s.id));
+
+      return updated.map(s => {
+        if (s.status === 'LOCKED' && s.dependsOn.length > 0) {
+          const allDependenciesDone = s.dependsOn.every(dId => doneIds.has(dId));
+          if (allDependenciesDone) {
+            newlyUnlockedStep = s;
+            return { ...s, status: 'READY' };
+          }
+        }
+        return s;
+      });
+    });
+
+    if (soundEnabled) {
+      playSound('approval');
+    }
+
+    addNotification('✅ Step Completed!', handoffMsg, 'success');
+    addActivity(memberName, 'Completed Guided Step', `Step ${stepId} marked done.`);
+  };
+
+  const markStepBlocked = (stepId, reason, owner = 'Team Leader') => {
+    setGuidedSteps(prev => prev.map(s => s.id === stepId ? { ...s, status: 'BLOCKED', blockedReason: reason } : s));
+
+    // Add to blocker center
+    const newBlocker = {
+      id: `blk_${Date.now()}`,
+      title: `GPS Step ${stepId} Blocked`,
+      description: reason,
+      owner,
+      severity: 'HIGH',
+      resolved: false
+    };
+    setBlockers(prev => [newBlocker, ...prev]);
+
+    if (soundEnabled) {
+      playSound('blocker');
+    }
+
+    addNotification('🚨 GPS STEP BLOCKED!', `Step ${stepId} flagged blocked: ${reason}`, 'error');
+  };
+
+  // --- LOG EXPERIMENT & NEW BEST CV EVENT ---
+  const addExperiment = (expData) => {
+    const newExp = {
+      id: `EXP-${String(experiments.length + 1).padStart(3, '0')}`,
+      timestamp: new Date().toISOString(),
+      ...expData
+    };
+
+    // Check if new best CV
+    const previousBestCv = experiments.length ? Math.max(...experiments.map(e => e.cvScore || 0)) : 0;
+    const isNewBest = newExp.cvScore > previousBestCv;
+
+    setExperiments(prev => [newExp, ...prev]);
+
+    if (isNewBest) {
+      if (soundEnabled) playSound('best_cv');
+      setBestCvModal({
+        expId: newExp.id,
+        model: newExp.model,
+        prevCv: previousBestCv,
+        newCv: newExp.cvScore,
+        gain: (newExp.cvScore - previousBestCv).toFixed(4)
+      });
+      addNotification('🏆 NEW BEST CV ACHIEVED!', `${newExp.model} hit CV: ${newExp.cvScore}`, 'success');
+    } else {
+      if (soundEnabled) playSound('handoff');
+      addNotification('🧪 Experiment Logged', `${newExp.id} added with CV: ${newExp.cvScore}`, 'info');
+    }
+
+    addActivity(expData.owner || 'Mohannad', 'Logged Experiment', `${newExp.id} (${newExp.model}) — CV: ${newExp.cvScore}`);
   };
 
   const toggleTask = (taskId, memberName) => {
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === taskId) {
-          const nextCompleted = !t.completed;
-          logActivity(
-            memberName || t.memberId,
-            `${nextCompleted ? 'completed' : 'uncompleted'} task "${t.title}"`
-          );
-          if (nextCompleted) {
-            addNotification('Task Completed! ✅', `${t.title} marked complete.`, 'success');
-          }
-          return {
-            ...t,
-            completed: nextCompleted,
-            completedAt: nextCompleted ? new Date().toISOString() : null
-          };
-        }
-        return t;
-      })
-    );
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        const nextState = !t.completed;
+        if (soundEnabled && nextState) playSound('handoff');
+        addActivity(memberName, nextState ? 'Completed Task' : 'Reopened Task', t.title);
+        return { ...t, completed: nextState, completedAt: nextState ? new Date().toISOString() : null };
+      }
+      return t;
+    }));
   };
 
-  const updateTaskNotes = (taskId, notesText) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, notes: notesText } : t))
-    );
+  const updateCompetition = (updates) => {
+    setCompetition(prev => ({ ...prev, ...updates }));
   };
 
-  const addExperiment = (expData) => {
-    const newExp = {
-      id: expData.id || `EXP-${String(experiments.length + 1).padStart(3, '0')}`,
-      owner: expData.owner,
-      model: expData.model,
-      name: expData.name,
-      changes: expData.changes,
-      cvScore: parseFloat(expData.cvScore),
-      cvStd: expData.cvStd ? parseFloat(expData.cvStd) : null,
-      lbScore: expData.lbScore ? parseFloat(expData.lbScore) : null,
-      runtime: expData.runtime || '5m',
-      status: expData.status || 'KEEP',
-      notes: expData.notes || '',
-      timestamp: new Date().toISOString()
-    };
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
 
-    const currentBest = [...experiments].sort((a, b) => (b.cvScore || 0) - (a.cvScore || 0))[0];
-    const isNewBest = !currentBest || newExp.cvScore > currentBest.cvScore;
-
-    if (isNewBest) {
-      newExp.status = 'BEST';
-      addNotification('🏆 NEW BEST CV!', `${newExp.model} achieved CV: ${newExp.cvScore}!`, 'success');
-    } else {
-      addNotification('Experiment Recorded 🧪', `${newExp.name} logged (CV: ${newExp.cvScore}).`, 'info');
-    }
-
-    setExperiments((prev) => [
-      newExp,
-      ...prev.map((e) => (isNewBest && e.status === 'BEST' ? { ...e, status: 'KEEP' } : e))
-    ]);
-
-    logActivity(newExp.owner, `logged experiment ${newExp.id} (${newExp.name}) with CV: ${newExp.cvScore}`);
-  };
-
-  const updateExperimentStatus = (expId, status) => {
-    setExperiments((prev) =>
-      prev.map((e) => (e.id === expId ? { ...e, status } : e))
-    );
-  };
-
-  const addSubmission = (subData) => {
-    const newSub = {
-      id: `SUB-${String(submissions.length + 1).padStart(3, '0')}`,
-      submissionNumber: submissions.length + 1,
-      experimentId: subData.experimentId,
-      cvScore: parseFloat(subData.cvScore),
-      lbScore: parseFloat(subData.lbScore),
-      notes: subData.notes || '',
-      timestamp: new Date().toISOString()
-    };
-
-    setSubmissions((prev) => [newSub, ...prev]);
-
-    if (subData.experimentId && subData.lbScore) {
-      setExperiments((prev) =>
-        prev.map((e) => (e.id === subData.experimentId ? { ...e, lbScore: parseFloat(subData.lbScore) } : e))
-      );
-    }
-
-    addNotification('Submission Recorded! 📤', `Submission #${newSub.submissionNumber} scored LB: ${newSub.lbScore}`, 'success');
-    logActivity('Team', `recorded submission #${newSub.submissionNumber} (LB: ${newSub.lbScore})`);
-  };
-
-  const addBlocker = (blockerData) => {
-    const newBlocker = {
-      id: `BLK-${String(blockers.length + 1).padStart(3, '0')}`,
-      title: blockerData.title,
-      description: blockerData.description,
-      owner: blockerData.owner,
-      severity: blockerData.severity || 'HIGH',
-      resolved: false,
-      createdAt: new Date().toISOString()
-    };
-
-    setBlockers((prev) => [newBlocker, ...prev]);
-    addNotification('🚨 BLOCKER ADDED', `${newBlocker.owner} flagged: ${newBlocker.title}`, 'error');
-    logActivity(newBlocker.owner, `flagged ${newBlocker.severity} blocker: "${newBlocker.title}"`);
-  };
-
-  const toggleBlockerResolved = (blockerId) => {
-    setBlockers((prev) =>
-      prev.map((b) => {
-        if (b.id === blockerId) {
-          const nextResolved = !b.resolved;
-          logActivity(b.owner, `${nextResolved ? 'resolved' : 'reopened'} blocker "${b.title}"`);
-          if (nextResolved) {
-            addNotification('Blocker Resolved! 🎉', `"${b.title}" marked resolved.`, 'success');
-          }
-          return { ...b, resolved: nextResolved };
-        }
-        return b;
-      })
-    );
-  };
-
-  const addTeamNote = (member, text) => {
-    const newNote = {
-      id: `NOTE-${Date.now()}`,
-      member,
-      text,
-      timestamp: new Date().toISOString()
-    };
-    setNotes((prev) => [newNote, ...prev]);
-    logActivity(member, `posted note: "${text.slice(0, 40)}..."`);
-  };
-
-  const addReport = (reportData) => {
-    const newReport = {
-      id: `REP-${Date.now()}`,
-      member: reportData.member,
-      type: reportData.type,
-      content: reportData.content,
-      createdAt: new Date().toISOString()
-    };
-    setReports((prev) => [newReport, ...prev]);
-    addNotification('Report Delivered 📤', `${reportData.type} sent to TEAM HQ by ${reportData.member}`, 'success');
-    logActivity(reportData.member, `delivered ${reportData.type} to Team HQ`);
-  };
-
-  const updateCompetition = (compData) => {
-    setCompetition((prev) => ({ ...prev, ...compData }));
-    addNotification('Settings Updated ⚙️', 'Competition configuration saved.', 'info');
+  const value = {
+    lang,
+    setLang,
+    toggleLanguage,
+    t,
+    soundEnabled,
+    toggleSound,
+    activeStation,
+    setStation: setActiveStation,
+    competition,
+    updateCompetition,
+    tasks,
+    toggleTask,
+    experiments,
+    addExperiment,
+    submissions,
+    blockers,
+    setBlockers,
+    notes,
+    setNotes,
+    reports,
+    setReports,
+    activityFeed,
+    notifications,
+    addNotification,
+    guidedSteps,
+    completeStep,
+    markStepBlocked,
+    bestCvModal,
+    setBestCvModal
   };
 
   return (
-    <WarRoomContext.Provider
-      value={{
-        lang,
-        setLang,
-        t,
-        activeStation,
-        changeStation,
-        resetWarRoom,
-        competition,
-        updateCompetition,
-        tasks,
-        toggleTask,
-        updateTaskNotes,
-        experiments,
-        addExperiment,
-        updateExperimentStatus,
-        submissions,
-        addSubmission,
-        blockers,
-        addBlocker,
-        toggleBlockerResolved,
-        notes,
-        addTeamNote,
-        activities,
-        reports,
-        addReport,
-        notifications,
-        addNotification,
-        logActivity
-      }}
-    >
+    <WarRoomContext.Provider value={value}>
       {children}
     </WarRoomContext.Provider>
   );
-};
+}
 
-export const useWarRoom = () => useContext(WarRoomContext);
+export function useWarRoom() {
+  return useContext(WarRoomContext);
+}

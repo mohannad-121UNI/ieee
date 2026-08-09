@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useWarRoom } from '../context/WarRoomContext';
 import UserGuideModal from './UserGuideModal';
-import { Globe, Users, Cpu, ShieldCheck, Database, Award, ArrowRight, ArrowLeft, BookOpen } from 'lucide-react';
+import { Globe, Users, Cpu, ShieldCheck, Database, Award, ArrowRight, Compass, BookOpen } from 'lucide-react';
 
 export default function StationSelector() {
   const { setStation, lang, toggleLanguage, t } = useWarRoom();
@@ -9,6 +9,17 @@ export default function StationSelector() {
   const isAr = lang === 'ar';
 
   const stations = [
+    {
+      id: 'pipeline',
+      name: isAr ? 'خريطة الـ GPS الموجهة' : 'Guided Competition GPS',
+      role: isAr ? 'المسار الزمني (38 خطوة)' : '38-Step Live Pipeline GPS',
+      sub: isAr ? 'دليل المسابقة الخطي الموجه من البيانات للتسليم' : 'Live step-by-step competition GPS guiding Mohannad, Moayad & Dyaa.',
+      img: '/assets/NEXTAURA.png',
+      fallbackImg: '/assets/NEXTAURA.jpg',
+      color: 'var(--accent-cyan)',
+      btnText: isAr ? 'فتح خريطة الـ GPS ←' : 'OPEN COMPETITION GPS →',
+      badge: 'LIVE GPS'
+    },
     {
       id: 'team_hq',
       name: 'Team HQ & War Room',
@@ -110,17 +121,17 @@ export default function StationSelector() {
       {/* Station Cards Grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '24px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gap: '20px',
         width: '100%',
-        maxWidth: '1280px'
+        maxWidth: '1380px'
       }}>
         {stations.map((st) => (
           <div
             key={st.id}
             className="glass-panel"
             style={{
-              padding: '28px',
+              padding: '24px',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
@@ -136,11 +147,11 @@ export default function StationSelector() {
             <div>
               {/* Photo Box */}
               <div style={{
-                width: '90px',
-                height: '90px',
-                borderRadius: '24px',
+                width: '80px',
+                height: '80px',
+                borderRadius: '20px',
                 overflow: 'hidden',
-                marginBottom: '20px',
+                marginBottom: '18px',
                 border: `2px solid ${st.color}`,
                 boxShadow: `0 0 20px ${st.color}40`
               }}>
@@ -152,13 +163,13 @@ export default function StationSelector() {
                 />
               </div>
 
-              <h3 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '4px' }}>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: '800', marginBottom: '4px' }}>
                 {st.name}
               </h3>
-              <p style={{ fontSize: '0.9rem', color: st.color, fontWeight: '700', marginBottom: '8px' }}>
+              <p style={{ fontSize: '0.88rem', color: st.color, fontWeight: '700', marginBottom: '8px' }}>
                 {st.role}
               </p>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '24px' }}>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '20px' }}>
                 {st.sub}
               </p>
             </div>
@@ -169,7 +180,7 @@ export default function StationSelector() {
               style={{
                 width: '100%',
                 padding: '12px',
-                fontSize: '0.9rem',
+                fontSize: '0.88rem',
                 background: `linear-gradient(135deg, ${st.color} 0%, #00F0FF 100%)`
               }}
             >
