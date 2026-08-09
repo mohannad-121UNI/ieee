@@ -3,6 +3,7 @@ import { INITIAL_COMPETITION, INITIAL_TASKS, INITIAL_EXPERIMENTS, INITIAL_SUBMIS
 import { INITIAL_GUIDED_STEPS, PIPELINE_PHASES } from '../config/guidedPipelineData';
 import { TRANSLATIONS } from '../config/translations';
 import { playSound } from '../services/audioFeedback';
+import { sendDesktopNotification, requestBrowserPermission } from '../services/realtimeSync';
 import { supabase, warRoomChannel } from '../services/supabase';
 
 const WarRoomContext = createContext();
@@ -100,6 +101,7 @@ export function WarRoomProvider({ children }) {
     }
 
     addNotification('✅ Step Completed!', handoffMsg, 'success');
+    sendDesktopNotification('✅ NextAura Handoff Alert', handoffMsg);
     addActivity(memberName, 'Completed Guided Step', `Step ${stepId} marked done.`);
   };
 
@@ -122,6 +124,7 @@ export function WarRoomProvider({ children }) {
     }
 
     addNotification('🚨 GPS STEP BLOCKED!', `Step ${stepId} flagged blocked: ${reason}`, 'error');
+    sendDesktopNotification('🚨 GPS STEP BLOCKED!', `Step ${stepId} flagged blocked: ${reason}`);
   };
 
   // --- LOG EXPERIMENT & NEW BEST CV EVENT ---

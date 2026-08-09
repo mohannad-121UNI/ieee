@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useWarRoom } from '../context/WarRoomContext';
 import CompetitionTimer from './CompetitionTimer';
 import UserGuideModal from './UserGuideModal';
+import NotificationCenter from './NotificationCenter';
 import { Globe, Users, Shield, Cpu, Compass, BookOpen, Volume2, VolumeX } from 'lucide-react';
 
 export default function Navbar() {
@@ -132,6 +133,7 @@ export default function Navbar() {
         {/* Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <CompetitionTimer />
+          <NotificationCenter />
 
           {/* Sound Toggle */}
           <button
