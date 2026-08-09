@@ -6,13 +6,13 @@ import TeamHQPage from './pages/TeamHQPage';
 import MohannadPage from './pages/MohannadPage';
 import MoayadPage from './pages/MoayadPage';
 import DyaaPage from './pages/DyaaPage';
-import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
+import AIChatModal from './components/AIChatModal';
 
 function AppContent() {
   const { activeStation, notifications } = useWarRoom();
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       {/* Toast Notifications Overlay */}
       <div style={{
         position: 'fixed',
@@ -62,6 +62,9 @@ function AppContent() {
           </main>
         </>
       )}
+
+      {/* Floating Interactive Live AI Chat Modal (Powered by Gemini) */}
+      <AIChatModal />
     </div>
   );
 }
