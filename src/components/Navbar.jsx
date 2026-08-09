@@ -1,41 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useWarRoom } from '../context/WarRoomContext';
-import { MEMBER_CONFIG } from '../config/aiTools';
-import { Zap, RefreshCw, Languages } from 'lucide-react';
 import CompetitionTimer from './CompetitionTimer';
+import UserGuideModal from './UserGuideModal';
+import { Globe, Users, Shield, Cpu, ExternalLink, BookOpen } from 'lucide-react';
 
 export default function Navbar() {
-  const { activeStation, changeStation, lang, setLang, t } = useWarRoom();
+  const { activeStation, setStation, lang, toggleLanguage, t } = useWarRoom();
+  const [showGuide, setShowGuide] = useState(false);
 
-  const currentMember = MEMBER_CONFIG[activeStation] || MEMBER_CONFIG.team_hq;
+  const isAr = lang === 'ar';
 
   return (
-    <header style={{
-      background: 'rgba(10, 15, 29, 0.85)',
-      backdropFilter: 'blur(16px)',
-      borderBottom: '1px solid var(--border-glass)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-      padding: '12px 24px'
-    }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px'
-      }}>
-        {/* Brand / Logo */}
+    <>
+      <nav 
+        className="glass-panel"
+        style={{
+          margin: '16px 20px 0 20px',
+          padding: '12px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+          borderRadius: '16px',
+          borderBottom: '1px solid var(--border-cyan)'
+        }}
+      >
+        {/* Brand & Title */}
         <div 
-          onClick={() => changeStation('team_hq')} 
+          onClick={() => setStation('station_select')}
           style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
         >
           <div style={{
-            width: '42px',
-            height: '42px',
+            width: '38px',
+            height: '38px',
             borderRadius: '10px',
             background: 'linear-gradient(135deg, #00F0FF, #7000FF)',
             display: 'flex',
@@ -53,137 +51,108 @@ export default function Navbar() {
             />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '1.2rem', fontWeight: '900', fontFamily: 'var(--font-heading)' }}>
-                {t.brand}
-              </span>
-              <span className="badge badge-purple" style={{ fontSize: '0.65rem' }}>{t.ieeeSubtitle}</span>
-            </div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {t.warRoomTitle}
-            </p>
+            <span style={{ fontSize: '1.2rem', fontWeight: '900', letterSpacing: '-0.02em' }}>
+              {t.brand} <span className="gradient-text-cyan">{t.warRoomTitle}</span>
+            </span>
+            <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              {t.ieeeSubtitle}
+            </span>
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+        {/* Station Navigation Tabs */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <button
-            onClick={() => changeStation('team_hq')}
-            className="btn-secondary"
+            onClick={() => setStation('team_hq')}
+            className={`btn-secondary ${activeStation === 'team_hq' ? 'active' : ''}`}
             style={{
               fontSize: '0.85rem',
               padding: '8px 14px',
               borderColor: activeStation === 'team_hq' ? 'var(--accent-purple)' : undefined,
-              color: activeStation === 'team_hq' ? 'var(--accent-purple)' : undefined,
-              background: activeStation === 'team_hq' ? 'rgba(168, 85, 247, 0.12)' : undefined
+              color: activeStation === 'team_hq' ? 'var(--accent-purple)' : undefined
             }}
           >
-            <Zap size={15} /> {t.teamHq}
+            <Users size={15} /> {t.teamHq}
           </button>
 
           <button
-            onClick={() => changeStation('mohannad')}
-            className="btn-secondary"
+            onClick={() => setStation('mohannad')}
+            className={`btn-secondary ${activeStation === 'mohannad' ? 'active' : ''}`}
             style={{
               fontSize: '0.85rem',
               padding: '8px 14px',
               borderColor: activeStation === 'mohannad' ? 'var(--accent-cyan)' : undefined,
-              color: activeStation === 'mohannad' ? 'var(--accent-cyan)' : undefined,
-              background: activeStation === 'mohannad' ? 'rgba(0, 240, 255, 0.12)' : undefined
+              color: activeStation === 'mohannad' ? 'var(--accent-cyan)' : undefined
             }}
           >
-            👑 Mohannad
+            <Cpu size={15} /> 👑 Mohannad
           </button>
 
           <button
-            onClick={() => changeStation('moayad')}
-            className="btn-secondary"
+            onClick={() => setStation('moayad')}
+            className={`btn-secondary ${activeStation === 'moayad' ? 'active' : ''}`}
             style={{
               fontSize: '0.85rem',
               padding: '8px 14px',
               borderColor: activeStation === 'moayad' ? 'var(--accent-green)' : undefined,
-              color: activeStation === 'moayad' ? 'var(--accent-green)' : undefined,
-              background: activeStation === 'moayad' ? 'rgba(16, 185, 129, 0.12)' : undefined
+              color: activeStation === 'moayad' ? 'var(--accent-green)' : undefined
             }}
           >
             📊 Moayad
           </button>
 
           <button
-            onClick={() => changeStation('dyaa')}
-            className="btn-secondary"
+            onClick={() => setStation('dyaa')}
+            className={`btn-secondary ${activeStation === 'dyaa' ? 'active' : ''}`}
             style={{
               fontSize: '0.85rem',
               padding: '8px 14px',
               borderColor: activeStation === 'dyaa' ? 'var(--accent-amber)' : undefined,
-              color: activeStation === 'dyaa' ? 'var(--accent-amber)' : undefined,
-              background: activeStation === 'dyaa' ? 'rgba(245, 158, 11, 0.12)' : undefined
+              color: activeStation === 'dyaa' ? 'var(--accent-amber)' : undefined
             }}
           >
-            🛡️ Dyaa
+            <Shield size={15} /> 🛡️ Dyaa
           </button>
-        </nav>
+        </div>
 
-        {/* Right Info & Language Switcher Widgets */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          {/* Language Selector Button */}
-          <button
-            onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
-            className="btn-secondary"
-            style={{ padding: '8px 14px', fontSize: '0.85rem', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
-            title="Toggle Arabic / English Translation"
-          >
-            <Languages size={15} /> {lang === 'en' ? '🇸🇦 العربية' : '🇬🇧 English'}
-          </button>
-
+        {/* Competition Timer & Guide & Language Switcher */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <CompetitionTimer />
 
-          {/* Active Station Widget */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div 
-              style={{
-                background: 'rgba(21, 31, 54, 0.9)',
-                border: '1px solid var(--border-glass)',
-                borderRadius: '12px',
-                padding: '6px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px'
-              }}
-            >
-              <div style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                overflow: 'hidden',
-                border: `2px solid ${currentMember.color || 'var(--accent-cyan)'}`
-              }}>
-                <img 
-                  src={currentMember.image} 
-                  alt={currentMember.name} 
-                  className="avatar-img"
-                  onError={(e) => { e.target.src = currentMember.fallbackImage; }}
-                />
-              </div>
-              <div style={{ lineHeight: '1.2' }}>
-                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t.activeStation}</p>
-                <p style={{ fontSize: '0.85rem', fontWeight: '700', color: currentMember.color || 'var(--accent-cyan)' }}>
-                  {currentMember.name}
-                </p>
-              </div>
-            </div>
+          {/* User Guide Button */}
+          <button
+            onClick={() => setShowGuide(true)}
+            className="btn-secondary"
+            style={{
+              padding: '8px 12px',
+              fontSize: '0.82rem',
+              borderColor: 'var(--accent-cyan)',
+              color: 'var(--accent-cyan)'
+            }}
+          >
+            <BookOpen size={15} /> {isAr ? '📖 دليل الاستخدام' : '📖 User Guide'}
+          </button>
 
-            <button
-              onClick={() => changeStation('station_select')}
-              className="btn-secondary"
-              style={{ padding: '8px 12px', fontSize: '0.8rem' }}
-              title="Switch Station"
-            >
-              <RefreshCw size={14} /> {t.switchStation}
-            </button>
-          </div>
+          {/* Language Toggle Button */}
+          <button
+            onClick={toggleLanguage}
+            className="btn-secondary"
+            style={{
+              padding: '8px 12px',
+              fontSize: '0.82rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Globe size={15} color="var(--accent-cyan)" />
+            <span>{isAr ? '🇬🇧 English' : '🇸🇦 العربية'}</span>
+          </button>
         </div>
-      </div>
-    </header>
+      </nav>
+
+      {/* Guide Modal */}
+      <UserGuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
+    </>
   );
 }

@@ -1,332 +1,186 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useWarRoom } from '../context/WarRoomContext';
-import { Crown, Database, Shield, Zap, ArrowRight, Languages } from 'lucide-react';
+import UserGuideModal from './UserGuideModal';
+import { Globe, Users, Cpu, ShieldCheck, Database, Award, ArrowRight, ArrowLeft, BookOpen } from 'lucide-react';
 
 export default function StationSelector() {
-  const { changeStation, tasks, lang, setLang, t } = useWarRoom();
+  const { setStation, lang, toggleLanguage, t } = useWarRoom();
+  const [showGuide, setShowGuide] = useState(false);
+  const isAr = lang === 'ar';
 
-  const getMemberProgress = (memberId) => {
-    const memberTasks = tasks.filter(t => t.memberId === memberId);
-    if (!memberTasks.length) return 0;
-    const completed = memberTasks.filter(t => t.completed).length;
-    return Math.round((completed / memberTasks.length) * 100);
-  };
+  const stations = [
+    {
+      id: 'team_hq',
+      name: 'Team HQ & War Room',
+      role: 'Unified Command Center',
+      sub: t.teamHqSub,
+      img: '/assets/NEXTAURA.png',
+      fallbackImg: '/assets/NEXTAURA.jpg',
+      color: 'var(--accent-purple)',
+      btnText: t.openWarRoom,
+      badge: 'COMMAND HQ'
+    },
+    {
+      id: 'mohannad',
+      name: 'Mohannad',
+      role: t.mohannadRole,
+      sub: t.mohannadSub,
+      img: '/assets/mohannad.jpg',
+      fallbackImg: '/assets/mohannad.png',
+      color: 'var(--accent-cyan)',
+      btnText: t.enterCommand,
+      badge: 'LEADER'
+    },
+    {
+      id: 'moayad',
+      name: 'Moayad',
+      role: t.moayadRole,
+      sub: t.moayadSub,
+      img: '/assets/moayad.jpg',
+      fallbackImg: '/assets/moayad.png',
+      color: 'var(--accent-green)',
+      btnText: t.enterDataLab,
+      badge: 'DATA OFFICER'
+    },
+    {
+      id: 'dyaa',
+      name: 'Dyaa',
+      role: t.dyaaRole,
+      sub: t.dyaaSub,
+      img: '/assets/dyaa.jpg',
+      fallbackImg: '/assets/dyaa.png',
+      color: 'var(--accent-amber)',
+      btnText: t.enterRedTeam,
+      badge: 'RED TEAM QA'
+    }
+  ];
 
   return (
     <div style={{
       minHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'center',
       alignItems: 'center',
+      justifyContent: 'center',
       padding: '40px 20px',
       position: 'relative'
     }}>
-      {/* Top Language Toggle */}
-      <div style={{ position: 'absolute', top: '24px', right: '24px' }}>
+      {/* Top Header Bar */}
+      <div style={{
+        position: 'absolute',
+        top: '24px',
+        right: isAr ? 'auto' : '24px',
+        left: isAr ? '24px' : 'auto',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
+      }}>
         <button
-          onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
+          onClick={() => setShowGuide(true)}
           className="btn-secondary"
-          style={{ padding: '8px 16px', fontSize: '0.85rem', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+          style={{ padding: '8px 14px', fontSize: '0.85rem', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
         >
-          <Languages size={16} /> {lang === 'en' ? '🇸🇦 العربية' : '🇬🇧 English'}
+          <BookOpen size={16} /> {isAr ? '📖 دليل استخدام الموقع' : '📖 Step-by-Step User Guide'}
+        </button>
+
+        <button
+          onClick={toggleLanguage}
+          className="btn-secondary"
+          style={{ padding: '8px 14px', fontSize: '0.85rem' }}
+        >
+          <Globe size={16} color="var(--accent-cyan)" /> {isAr ? '🇬🇧 English' : '🇸🇦 العربية'}
         </button>
       </div>
 
-      {/* Header Title Section */}
-      <div style={{ textAlign: 'center', maxWidth: '800px', marginBottom: '48px' }}>
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '6px 16px',
-          borderRadius: '999px',
-          background: 'rgba(0, 240, 255, 0.1)',
-          border: '1px solid var(--border-cyan)',
-          marginBottom: '16px'
-        }}>
-          <Zap size={16} color="var(--accent-cyan)" />
-          <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--accent-cyan)' }}>
-            {t.ieeeSubtitle}
-          </span>
+      {/* Main Title */}
+      <div style={{ textAlign: 'center', maxWidth: '800px', marginBottom: '40px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '999px', background: 'rgba(0, 240, 255, 0.1)', border: '1px solid var(--border-cyan)', marginBottom: '16px' }}>
+          <Award size={16} color="var(--accent-cyan)" />
+          <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: '700' }}>IEEE COMPETITION WAR ROOM 2026</span>
         </div>
 
-        <h1 style={{
-          fontSize: 'clamp(2rem, 5vw, 3.5rem)',
-          fontWeight: '900',
-          lineHeight: '1.15',
-          marginBottom: '16px'
-        }}>
-          ⚡ NextAura AI <span className="gradient-text-cyan">{lang === 'ar' ? 'غرفة العمليات' : 'War Room'}</span> 🧠🏆
+        <h1 style={{ fontSize: '2.5rem', fontWeight: '900', marginBottom: '12px' }}>
+          {t.brand} <span className="gradient-text-cyan">{t.warRoomTitle}</span>
         </h1>
-
-        <p style={{
-          fontSize: '1.2rem',
-          color: 'var(--text-muted)',
-          fontWeight: '500'
-        }}>
+        <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>
           {t.chooseStation}
         </p>
       </div>
 
-      {/* Grid of 4 Cards */}
+      {/* Station Cards Grid */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '24px',
         width: '100%',
-        maxWidth: '1300px'
+        maxWidth: '1280px'
       }}>
-        {/* CARD 1 — MOHANNAD */}
-        <div 
-          className="glass-panel glass-panel-interactive"
-          style={{
-            padding: '32px 24px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-            borderTop: '4px solid var(--accent-cyan)'
-          }}
-        >
-          <div className="avatar-frame avatar-frame-cyan" style={{ width: '110px', height: '110px', marginBottom: '20px' }}>
-            <img 
-              src="/assets/mohannad.jpg" 
-              alt="Mohannad" 
-              className="avatar-img"
-              onError={(e) => { e.target.src = '/assets/mohannad.png'; }}
-            />
-          </div>
-
-          <span className="badge badge-cyan" style={{ marginBottom: '12px' }}>
-            <Crown size={12} /> {t.mohannadRole}
-          </span>
-
-          <h2 style={{ fontSize: '1.6rem', marginBottom: '6px' }}>Mohannad</h2>
-
-          <div style={{
-            color: 'var(--text-muted)',
-            fontSize: '0.9rem',
-            lineHeight: '1.6',
-            marginBottom: '20px',
-            flexGrow: 1
-          }}>
-            <p style={{ color: 'var(--text-main)', fontWeight: '600' }}>👑 Mohannad — Team Leader</p>
-            <p>🧠 Modeling & Strategy</p>
-            <p>🎯 Integration & Final Decisions</p>
-          </div>
-
-          {/* Progress Pill */}
-          <div style={{ width: '100%', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
-              <span style={{ color: 'var(--text-muted)' }}>{t.tasksProgress}</span>
-              <span style={{ color: 'var(--accent-cyan)', fontWeight: '700' }}>{getMemberProgress('mohannad')}%</span>
-            </div>
-            <div className="progress-bar-bg">
-              <div className="progress-bar-fill progress-bar-cyan" style={{ width: `${getMemberProgress('mohannad')}%` }}></div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => changeStation('mohannad')}
-            className="btn-primary"
-            style={{ width: '100%', justifyContent: 'center' }}
-          >
-            {t.enterCommand}
-          </button>
-        </div>
-
-        {/* CARD 2 — MOAYAD */}
-        <div 
-          className="glass-panel glass-panel-interactive"
-          style={{
-            padding: '32px 24px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-            borderTop: '4px solid var(--accent-green)'
-          }}
-        >
-          <div className="avatar-frame avatar-frame-green" style={{ width: '110px', height: '110px', marginBottom: '20px' }}>
-            <img 
-              src="/assets/moayad.jpg" 
-              alt="Moayad" 
-              className="avatar-img"
-              onError={(e) => { e.target.src = '/assets/moayad.png'; }}
-            />
-          </div>
-
-          <span className="badge badge-green" style={{ marginBottom: '12px' }}>
-            <Database size={12} /> {t.moayadRole}
-          </span>
-
-          <h2 style={{ fontSize: '1.6rem', marginBottom: '6px' }}>Moayad</h2>
-
-          <div style={{
-            color: 'var(--text-muted)',
-            fontSize: '0.9rem',
-            lineHeight: '1.6',
-            marginBottom: '20px',
-            flexGrow: 1
-          }}>
-            <p style={{ color: 'var(--text-main)', fontWeight: '600' }}>📊 Data Intelligence</p>
-            <p>🔍 EDA & Leakage Audit</p>
-            <p>🧩 Feature Engineering</p>
-          </div>
-
-          {/* Progress Pill */}
-          <div style={{ width: '100%', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
-              <span style={{ color: 'var(--text-muted)' }}>{t.tasksProgress}</span>
-              <span style={{ color: 'var(--accent-green)', fontWeight: '700' }}>{getMemberProgress('moayad')}%</span>
-            </div>
-            <div className="progress-bar-bg">
-              <div className="progress-bar-fill progress-bar-green" style={{ width: `${getMemberProgress('moayad')}%` }}></div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => changeStation('moayad')}
-            className="btn-primary"
+        {stations.map((st) => (
+          <div
+            key={st.id}
+            className="glass-panel"
             style={{
-              width: '100%',
-              justifyContent: 'center',
-              background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)'
+              padding: '28px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              position: 'relative',
+              borderTop: `4px solid ${st.color}`,
+              transition: 'all 0.3s ease'
             }}
           >
-            {t.enterDataLab}
-          </button>
-        </div>
+            <span className="badge badge-cyan" style={{ position: 'absolute', top: '16px', right: isAr ? 'auto' : '16px', left: isAr ? '16px' : 'auto', fontSize: '0.65rem' }}>
+              {st.badge}
+            </span>
 
-        {/* CARD 3 — DYAA */}
-        <div 
-          className="glass-panel glass-panel-interactive"
-          style={{
-            padding: '32px 24px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-            borderTop: '4px solid var(--accent-amber)'
-          }}
-        >
-          <div className="avatar-frame avatar-frame-amber" style={{ width: '110px', height: '110px', marginBottom: '20px' }}>
-            <img 
-              src="/assets/dyaa.png" 
-              alt="Dyaa" 
-              className="avatar-img"
-              onError={(e) => { e.target.src = '/assets/dyaa.jpg'; }}
-            />
-          </div>
+            <div>
+              {/* Photo Box */}
+              <div style={{
+                width: '90px',
+                height: '90px',
+                borderRadius: '24px',
+                overflow: 'hidden',
+                marginBottom: '20px',
+                border: `2px solid ${st.color}`,
+                boxShadow: `0 0 20px ${st.color}40`
+              }}>
+                <img 
+                  src={st.img} 
+                  alt={st.name} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => { e.target.src = st.fallbackImg; }}
+                />
+              </div>
 
-          <span className="badge badge-amber" style={{ marginBottom: '12px' }}>
-            <Shield size={12} /> {t.dyaaRole}
-          </span>
-
-          <h2 style={{ fontSize: '1.6rem', marginBottom: '6px' }}>Dyaa</h2>
-
-          <div style={{
-            color: 'var(--text-muted)',
-            fontSize: '0.9rem',
-            lineHeight: '1.6',
-            marginBottom: '20px',
-            flexGrow: 1
-          }}>
-            <p style={{ color: 'var(--text-main)', fontWeight: '600' }}>🛡️ Red Team</p>
-            <p>✅ Quality Assurance</p>
-            <p>🧪 Alternative Solutions</p>
-          </div>
-
-          {/* Progress Pill */}
-          <div style={{ width: '100%', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
-              <span style={{ color: 'var(--text-muted)' }}>{t.tasksProgress}</span>
-              <span style={{ color: 'var(--accent-amber)', fontWeight: '700' }}>{getMemberProgress('dyaa')}%</span>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '4px' }}>
+                {st.name}
+              </h3>
+              <p style={{ fontSize: '0.9rem', color: st.color, fontWeight: '700', marginBottom: '8px' }}>
+                {st.role}
+              </p>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '24px' }}>
+                {st.sub}
+              </p>
             </div>
-            <div className="progress-bar-bg">
-              <div className="progress-bar-fill progress-bar-amber" style={{ width: `${getMemberProgress('dyaa')}%` }}></div>
-            </div>
+
+            <button
+              onClick={() => setStation(st.id)}
+              className="btn-primary"
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '0.9rem',
+                background: `linear-gradient(135deg, ${st.color} 0%, #00F0FF 100%)`
+              }}
+            >
+              {st.btnText}
+            </button>
           </div>
-
-          <button
-            onClick={() => changeStation('dyaa')}
-            className="btn-primary"
-            style={{
-              width: '100%',
-              justifyContent: 'center',
-              background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-              boxShadow: '0 4px 14px rgba(245, 158, 11, 0.3)'
-            }}
-          >
-            {t.enterRedTeam}
-          </button>
-        </div>
-
-        {/* CARD 4 — TEAM HQ */}
-        <div 
-          className="glass-panel glass-panel-interactive"
-          style={{
-            padding: '32px 24px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-            borderTop: '4px solid var(--accent-purple)'
-          }}
-        >
-          <div 
-            className="avatar-frame avatar-frame-purple" 
-            style={{ width: '110px', height: '110px', marginBottom: '20px', background: 'rgba(168, 85, 247, 0.2)', padding: '12px' }}
-          >
-            <img 
-              src="/assets/NEXTAURA.png" 
-              alt="NextAura Logo" 
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              onError={(e) => { e.target.src = '/assets/NEXTAURA.jpg'; }}
-            />
-          </div>
-
-          <span className="badge badge-purple" style={{ marginBottom: '12px' }}>
-            <Zap size={12} /> Command Center
-          </span>
-
-          <h2 style={{ fontSize: '1.6rem', marginBottom: '6px' }}>TEAM HQ</h2>
-
-          <div style={{
-            color: 'var(--text-muted)',
-            fontSize: '0.9rem',
-            lineHeight: '1.6',
-            marginBottom: '20px',
-            flexGrow: 1
-          }}>
-            <p style={{ color: 'var(--text-main)', fontWeight: '600' }}>⚡ NextAura AI Command Center</p>
-            <p style={{ fontStyle: 'italic', marginTop: '6px' }}>"{t.teamHqSub}"</p>
-          </div>
-
-          <button
-            onClick={() => changeStation('team_hq')}
-            className="btn-primary"
-            style={{
-              width: '100%',
-              justifyContent: 'center',
-              background: 'linear-gradient(135deg, #8A2BE2 0%, #00F0FF 100%)',
-              boxShadow: '0 4px 14px rgba(168, 85, 247, 0.4)'
-            }}
-          >
-            {t.openWarRoom}
-          </button>
-        </div>
+        ))}
       </div>
+
+      {/* Guide Modal */}
+      <UserGuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
     </div>
   );
 }
