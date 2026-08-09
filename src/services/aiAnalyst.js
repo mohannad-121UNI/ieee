@@ -1,4 +1,102 @@
-// 🤖 Aura Competition Analyst — High-Performance Bilingual Intelligence Engine
+// 🤖 Aura Competition Analyst — Elite Kaggle Grandmaster Intelligence Engine
+
+export function buildGrandmasterContext(state, lang = 'en') {
+  const {
+    competition = {},
+    tasks = [],
+    experiments = [],
+    submissions = [],
+    blockers = [],
+    notes = [],
+    reports = []
+  } = state;
+
+  const isAr = lang === 'ar';
+
+  const mohTasks = tasks.filter(t => t.memberId === 'mohannad');
+  const moaTasks = tasks.filter(t => t.memberId === 'moayad');
+  const dyaTasks = tasks.filter(t => t.memberId === 'dyaa');
+
+  const mohDone = mohTasks.filter(t => t.completed).length;
+  const moaDone = moaTasks.filter(t => t.completed).length;
+  const dyaDone = dyaTasks.filter(t => t.completed).length;
+
+  const completedTasks = tasks.filter(t => t.completed).map(t => `${t.memberId}: ${t.title}`);
+  const pendingTasks = tasks.filter(t => !t.completed).map(t => `${t.memberId}: ${t.title}`);
+
+  const activeBlockers = blockers.filter(b => !b.resolved);
+  const bestExp = [...experiments].sort((a, b) => (b.cvScore || 0) - (a.cvScore || 0))[0];
+
+  return `
+SYSTEM PERSONA:
+You are "Aura AI", a Senior Machine Learning Competition Strategist and Kaggle Grandmaster Analyst working as the 4th teammate inside NextAura AI Competition War Room for an IEEE Machine Learning Competition.
+
+THE HUMAN TEAM:
+- Mohannad (👑 Team Leader & Modeling Strategist)
+- Moayad (📊 Data Intelligence & Feature Engineer)
+- Dyaa (🛡️ Red Team & Quality Assurance Officer)
+
+CURRENT COMPETITION TELEMETRY:
+- Competition Name: ${competition.name}
+- Evaluation Metric: ${competition.metric} (Direction: ${competition.metricDirection || 'higher is better'})
+- Submission Limit: ${submissions.length} / ${competition.submissionLimit || 10} used
+- Current Team Mission: "${competition.currentObjective}"
+- Next Action: "${competition.nextAction}"
+
+COMPLETED TASKS (${completedTasks.length}/${tasks.length}):
+${completedTasks.length > 0 ? completedTasks.join('\n') : 'None yet.'}
+
+PENDING TASKS (${pendingTasks.length}/${tasks.length}):
+${pendingTasks.length > 0 ? pendingTasks.join('\n') : 'All tasks completed!'}
+
+LOGGED EXPERIMENTS (${experiments.length}):
+${experiments.length > 0 ? JSON.stringify(experiments, null, 2) : 'No experiments logged yet.'}
+
+ACTIVE BLOCKERS (${activeBlockers.length}):
+${activeBlockers.length > 0 ? JSON.stringify(activeBlockers, null, 2) : 'Zero active blockers.'}
+
+SUBMITTED DATA/RISK REPORTS (${reports.length}):
+${reports.length > 0 ? JSON.stringify(reports, null, 2) : 'No reports submitted yet.'}
+
+INSTRUCTIONS:
+1. Provide hyper-specific, elite Machine Learning competition advice.
+2. DO NOT output generic high-level fluff like "do data cleaning". Be extremely technical (e.g. suggest exact cross-validation schemes like 5-Fold StratifiedKFold, target-encoding inside folds, GBDT hyperparameters, rank blending, feature ratios).
+3. Always respond in the language specified: ${isAr ? 'ARABIC (العربية)' : 'ENGLISH'}.
+4. Use clean GitHub markdown formatting with headings (## ⚡ TEAM STATUS, ## 🚨 RISKS, ## 🎯 NEXT 3 ACTIONS, ## 🧬 ENSEMBLE/MODELING ADVICE).
+`;
+}
+
+export async function queryFrontierAI({ queryType, prompt, state, lang = 'en', apiKey = '', selectedModel = 'gemini-1.5-pro' }) {
+  const systemContext = buildGrandmasterContext(state, lang);
+
+  // If user provided a Gemini API Key, call Gemini 1.5/2.5 Pro API directly
+  if (apiKey && apiKey.trim().length > 10) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey.trim()}`;
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `${systemContext}\n\nUSER ACTION/QUESTION: ${prompt || queryType}`
+            }]
+          }]
+        })
+      });
+
+      const data = await response.json();
+      if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+        return data.candidates[0].content.parts[0].text;
+      }
+    } catch (err) {
+      console.error('Frontier AI API Error:', err);
+    }
+  }
+
+  // Fallback to internal Grandmaster Heuristic Engine
+  return generateAnalystResponse(queryType, state, lang);
+}
 
 export function generateAnalystResponse(queryType, state, lang = 'en') {
   const isAr = lang === 'ar';
@@ -12,7 +110,6 @@ export function generateAnalystResponse(queryType, state, lang = 'en') {
     reports = []
   } = state;
 
-  // Task metrics per station
   const mohTasks = tasks.filter(t => t.memberId === 'mohannad');
   const moaTasks = tasks.filter(t => t.memberId === 'moayad');
   const dyaTasks = tasks.filter(t => t.memberId === 'dyaa');
@@ -26,251 +123,163 @@ export function generateAnalystResponse(queryType, state, lang = 'en') {
   const dyaPct = dyaTasks.length ? Math.round((dyaDone / dyaTasks.length) * 100) : 0;
   const overallPct = tasks.length ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100) : 0;
 
-  // Find best experiment
   let bestExp = null;
   if (experiments.length > 0) {
-    bestExp = [...experiments].sort((a, b) => {
-      if (competition.metricDirection === 'lower') {
-        return (a.cvScore || Infinity) - (b.cvScore || Infinity);
-      }
-      return (b.cvScore || -Infinity) - (a.cvScore || -Infinity);
-    })[0];
+    bestExp = [...experiments].sort((a, b) => (b.cvScore || 0) - (a.cvScore || 0))[0];
   }
 
-  // Active blockers
   const activeBlockers = blockers.filter(b => !b.resolved);
   const subsUsed = submissions.length;
   const subLimit = competition.submissionLimit || 10;
   const subsRemaining = Math.max(0, subLimit - subsUsed);
 
   if (isAr) {
-    // ARABIC INTELLIGENCE ENGINE RESPONSES
     switch (queryType) {
       case 'ANALYZE_TEAM':
-        return `## ⚡ حالة الفريق الشاملة
+        return `## ⚡ حالة الفريق والتحليل الذكي اللحظي
 
-التقدم الإجمالي للفريق: **${overallPct}%** تم إنجازها عبر كافة المحطات.
-- 👑 **مهند (قائد الفريق - النماذج)**: ${mohPct}% (${mohDone}/${mohTasks.length} مهام)
+نسبة الإنجاز الكلية: **${overallPct}%** عبر المحطات الثلاث.
+- 👑 **مهند (بناء النماذج)**: ${mohPct}% (${mohDone}/${mohTasks.length} مهام)
 - 📊 **مؤيد (استخبارات البيانات)**: ${moaPct}% (${moaDone}/${moaTasks.length} مهام)
-- 🛡️ **ضياء (الفريق الأحمر - الجودة)**: ${dyaPct}% (${dyaDone}/${dyaTasks.length} مهام)
+- 🛡️ **ضياء (الفريق الأحمر وضبط الجودة)**: ${dyaPct}% (${dyaDone}/${dyaTasks.length} مهام)
 
-أفضل نتيجة حتى الآن:
-${bestExp ? `- **النموذج**: ${bestExp.model} (${bestExp.name})\n- **أفضل تقييم محلي CV**: ${bestExp.cvScore} ${bestExp.cvStd ? `(±${bestExp.cvStd})` : ''}\n- **درجة لوحة الصدارة LB**: ${bestExp.lbScore || 'في انتظار التسليم'}` : '- لم يتم تسجيل تجربة معتمدة بعد.'}
+تحليل النماذج والنتائج:
+${bestExp ? `- **أفضل نموذج حالي**: ${bestExp.model} (${bestExp.name})\n- **درجة التقييم المحلي (CV)**: ${bestExp.cvScore}\n- **لوحة الصدارة (LB)**: ${bestExp.lbScore || 'في انتظار التسليم'}` : '- لم يتم تسجيل أي تجربة محتسبة بعد. يجب على مهند إطلاق نموذج البداية.'}
 
-حصة التسليمات المستعملة: **${subsUsed} / ${subLimit}** (المتبقي: ${subsRemaining}).
-
----
-
-## 🚨 تقييم المخاطر الحالية
-
-${activeBlockers.length > 0 ? activeBlockers.map(b => `1. **عقبة [${b.severity}]**: ${b.title} (${b.owner}) — ${b.description}`).join('\n') : '1. ✅ لا توجد عقبات حرجة نشطة حالياً.'}
-${subsRemaining <= 2 ? `2. ⚠️ **تحذير استهلاك التسليمات**: متبقي ${subsRemaining} تسليمات فقط اليوم!` : ''}
-${!dyaTasks.find(t => t.id === 'dya_3')?.completed ? '3. ⚠️ **مخاطر التحقق**: ضياء لم يكمل فحص التسريب والاستراتيجية بعد.' : ''}
-${experiments.length < 2 ? '4. ⚠️ **تنوع النماذج**: ينبغي تجربة أكثر من عائلة نموذج واحدة لتجهيز الـ Ensemble.' : ''}
+حصة التسليمات: **${subsUsed} / ${subLimit}** (المتبقي: ${subsRemaining}).
 
 ---
 
-## 🎯 خطة الإجراءات الثلاثة القادمة
+## 🚨 تقييم المخاطر وتغييرات التوزيع
 
-1️⃣ **مهند** ← ${mohPct < 50 ? 'تأكيد خطة التقسيم CV وإطلاق نموذج البداية Baseline.' : 'دمج توقعات OOF بين CatBoost ونموذج ضياء البديل.'}
-
-2️⃣ **مؤيد** ← ${moaPct < 80 ? 'إكمال تحليل انزياح البيانات بين التدريب والاختبار وتصدير الميزات.' : 'توليد ميزات النسبة والجمع المجموعاتي للتجربة القادمة.'}
-
-3️⃣ **ضياء** ← ${!dyaTasks.find(t => t.id === 'dya_7')?.completed ? 'مراجعة كود التشفير والتأكد من عدم وجود تسريب داخل الطيات.' : 'بناء أنبوب اختبار لنموذج LightGBM بميزات مستقلة.'}
+${activeBlockers.length > 0 ? activeBlockers.map(b => `1. **عقبة [${b.severity}]**: ${b.title} (${b.owner}) — ${b.description}`).join('\n') : '1. ✅ لا توجد عقبات حرجة نشطة حتى الآن.'}
+${subsRemaining <= 2 ? `2. ⚠️ **حظر التسليم العشوائي**: متبقي ${subsRemaining} تسليمات فقط! يجب الحصول على موافقة ضياء.` : ''}
+${experiments.length === 0 ? '3. ⚠️ **غياب النقطة المرجعية Baseline**: يجب إطلاق أول نموذج والتحقق من أنبوب التسليم.' : ''}
 
 ---
 
-## 🧠 توصيات أدوات الذكاء الاصطناعي
+## 🎯 الإجراءات الاستراتيجية الـ 3 القادمة
 
-استعمل:
-- 🧠 **ChatGPT** ← التخطيط والاستراتيجية الرياضية وتحديد القيود.
-- 🔵 **Gemini Pro** ← تحليل مستندات البيانات والانزياح.
-- 🟠 **Claude** ← مراجعة الأكواد والتدقيق الأمني والفريق الأحمر.
-- 💻 **Codex** ← بناء سكربتات التنفيذ السريعة.`;
+1️⃣ **مهند** ← ${mohPct < 40 ? 'قراءة الشروط وتأكيد دالة التقييم الفعالة مع إطلاق أول Baseline.' : 'بدء تجربة عائلة GBDT ثانية (LightGBM) للمقارنة مع CatBoost.'}
+
+2️⃣ **مؤيد** ← ${moaPct < 60 ? 'فحص جودة البيانات وحساب نسبة القيم المفقودة والتكرار.' : 'استخراج ميزات التفاعل والنسب النسبية (Ratios) وإرسال التقرير.'}
+
+3️⃣ **ضياء** ← ${!dyaTasks.find(t => t.id === 'dya_3')?.completed ? 'فحص كود التقسيم للتأكد من عدم وجود تسريب للمعلومات بين الطيات.' : 'بناء أنبوب نموذج بديل مستقل لدمج التوقعات.'}
+
+---
+
+## 🧠 توصيات أدوات الذكاء الاصطناعي الخاصة بالمهمة
+
+- 🧠 **ChatGPT** ← اختيار دوال الخسارة المخصصة (Custom Objective) وحساب الفئات.
+- 🔵 **Gemini Pro** ← فحص توزيعات الميزات واكتشاف انزياح البيانات.
+- 🟠 **Claude** ← مراجعة الكود والتحقق من حظر تسريب التقييم Target Leakage.`;
 
       case 'WHAT_NEXT':
-        return `## 🎯 خطة التنفيذ الفورية للفريق
+        return `## 🎯 خطة الإجراء الفورية للفريق
 
-المهمة الحالية: **"${competition.currentObjective || 'رفع تقييم CV المحتسب'}"**
+الهدف الحالي: **"${competition.currentObjective}"**
 
 ---
 
-## 🎯 الإجراءات الفورية
+## 🎯 الإجراءات الموصى بها الآن
 
-1️⃣ **مؤيد (البيانات)**: تسليم مصفوفة الميزات المستخرجة (النسب والمؤشرات) إلى مهند.
-
-2️⃣ **مهند (القائد)**: تنفيذ التجربة EXP-00${experiments.length + 1} باستخدام 5-Fold Stratified CV.
-
-3️⃣ **ضياء (الفريق الأحمر)**: إجراء فحص مستقل على سكربتات التحويل لمنع تسريب البيانات.`;
+1️⃣ **مؤيد**: إكمال فحص تسريب البيانات وتصدير ملف الميزات الهندسية الأولى.
+2️⃣ **مهند**: بناء تقييم 5-Fold StratifiedKFold وتسجيل نتيجة أول تجربة EXP-001.
+3️⃣ **ضياء**: اختبار كود المعالجة المسبقة للتأكد من تنفيذ التجهيز داخل كل طية (Inside-Fold Fit).`;
 
       case 'FIND_RISKS':
-        return `## 🚨 تدقيق المخاطر الشامل
+        return `## 🚨 تدقيق المخاطر والأنومالي
 
-تم رصد **${activeBlockers.length} عقبة نشطة**:
+- **عدد العقبات النشطة**: ${activeBlockers.length}
+- **فحص تسريب الطيات**: ${dyaTasks.find(t => t.id === 'dya_3')?.completed ? '✅ معتمد من ضياء' : '🔴 لم يتم اعتماده بعد (مخاطرة عالية)'}
+- **تقرير البيانات**: ${reports.find(r => r.type === 'DATA_REPORT') ? '✅ مكتمل' : '🟡 قيد الإعداد بواسطة مؤيد'}
 
-${activeBlockers.length ? activeBlockers.map((b, i) => `${i + 1}. **[${b.severity}] ${b.title}**: ${b.description}`).join('\n') : '✅ صفر عقبات مبلاغ عنها.'}
+**التوصية الفنية**: لا تقم بأي تسليم للوحة الصدارة العامة قبل اعتماد ضياء ومطابقة الأبعاد والأنواع.`;
 
-### 🛡️ فحص التسريب والتحقق:
-- **تسريب الطيات**: ${dyaTasks.find(t => t.id === 'dya_3')?.completed ? '✅ تم الفحص والاعتماد بواسطة ضياء' : '🔴 لم يتم الفحص بعد (مطلوب إجراء من ضياء)'}
-- **تقرير البيانات**: ${reports.find(r => r.type === 'DATA_REPORT') ? '✅ تم تسليمه لمقر الفريق' : '🟡 في انتظار مؤيد'}
-- **الفجوة بين CV و LB**: ${bestExp && bestExp.lbScore ? (Math.abs(bestExp.cvScore - bestExp.lbScore) > 0.03 ? '🔴 فجوة كبيرة تفوق 0.03! احتمال فرط التوافق Overfitting.' : '🟢 التقييم المحلي متوافق مع لوحة الصدارة.') : '⚪ في انتظار نتيجة LB لمعاينة الفجوة.'}`;
+      case 'ENSEMBLE_GEN':
+        return `## 🧬 استراتيجية دمج النماذج (Ensemble & Blending)
+
+توصية الكراندماستر:
+1. **النماذج المطلوبة**: CatBoost + LightGBM + XGBoost + ExtraTrees.
+2. **طريقة الدمج**: Rank Averaging أو Scipy Minimize على توقعات OOF.
+3. **التنوع**: استخدام تمثيلات ميزات مختلفة لكل نموذج لتقليل الارتباط (Correlation < 0.85).`;
 
       case 'HOW_TO_IMPROVE':
-        return `## 📈 استراتيجية تحسين النتيجة والارتقاء بالمرتبة
+        return `## 📈 خطة رفع النتائج وتجاوز المنافسين
 
-أفضل تقييم محلي حالي: **${bestExp ? bestExp.cvScore : 'غير محدد بعد'}**
-
----
-
-## 🎯 4 محاور تحسين قوية
-
-1️⃣ **التفاعلات النسبية**: إنشاء نسب متقدمة مثل \`feat_A / (feat_B + 1e-5)\` وتحويلات \`log1p\`.
-2️⃣ **الترميز الفئوي**: تطبيق Target Encoding داخل طيات CV حصراً لمنع التسريب.
-3️⃣ **ضبط المعلمات**: رفع \`n_estimators\` إلى 3000 مع Early Stopping عند 100 وتخفيض معدل التعلم.
-4️⃣ **الدمج Ensemble**: تدريب نموذج XGBoost من قبل ضياء ودمج التوقعات مع CatBoost.`;
-
-      case 'WORKLOAD_BALANCE':
-        return `## ⚖️ تقرير توازن وحجم العمل للفريق
-
-- 👑 **مهند**: ${mohPct}% إنجاز (${mohDone}/${mohTasks.length} مهام)
-- 📊 **مؤيد**: ${moaPct}% إنجاز (${moaDone}/${moaTasks.length} مهام)
-- 🛡️ **ضياء**: ${dyaPct}% إنجاز (${dyaDone}/${dyaTasks.length} مهام)
-
-**التوصية**: ${dyaPct < mohPct ? 'إسناد مراجعة الأكواد وبناء نموذج الاختبار البديل مباشرة إلى ضياء لتسريع الإنجاز.' : 'التركيز على حلقة التجريب بين مؤيد ومهند.'}`;
-
-      case 'SUGGEST_EXPERIMENT':
-        return `## 🧪 مقترح التجربة القادمة ذات الأثر العالي
-
-**رمز التجربة**: EXP-00${experiments.length + 1}
-**النموذج**: CatBoostClassifier + LightGBM
-**الفرضية**: دمج نسب مؤيد الهندسية مع معالجة CatBoost الفئوية لرفع الفئة F1 بمقدار +0.015.
-
----
-
-## 📝 المواصفات الفنية
-
-- **الميزات**: الميزات الخام + 14 نسبة هندسية + مؤشرات القيم المفقودة.
-- **التقسيم**: 5-Fold StratifiedKFold (البذرة: 42).
-- **الإجراء**: التشغيل على المحطة، تسجيل النتيجة، وطلب اعتماد ضياء قبل التسليم.`;
-
-      case 'FINAL_SUBMISSION_REVIEW':
-        return `## 🏆 تدقيق الجاهزية للتسليم النهائي
-
-- **المهام الإجمالية**: ${overallPct}% منجزة
-- **العقبات النشطة**: ${activeBlockers.length === 0 ? '🟢 لا توجد عقبات' : `🔴 يوجد ${activeBlockers.length} عقبات`}
-- **النموذج المعتمد**: ${bestExp ? `✅ ${bestExp.model} (CV: ${bestExp.cvScore})` : '❌ لم يتم اختيار نموذج'}
-- **اعتماد ضياء**: ${dyaTasks.find(t => t.id === 'dya_7')?.completed ? '🟢 تم اعتماد التسليم من قبل ضياء' : '🟡 في انتظار التدقيق النهائي من ضياء'}`;
+1️⃣ **الهندسة النسبية**: إنشاء ميزات تمثل الفروق والنسب بين الميزات الأعلى أهمية.
+2️⃣ **الترميز المستهدف (Target Encoding)**: تطبيقه حصرياً داخل طيات التدريب مع إضافة ضوضاء خفيفة Smoothing.
+3️⃣ **تحسين التوافق**: رفع عدد الأشجار وتصغير التعلم \`learning_rate=0.015\`.`;
 
       default:
         return generateAnalystResponse('ANALYZE_TEAM', state, 'ar');
     }
   }
 
-  // ENGLISH RESPONSES (DEFAULT)
+  // ENGLISH GRANDMASTER ENGINE RESPONSES
   switch (queryType) {
     case 'ANALYZE_TEAM':
-      return `## ⚡ TEAM STATUS
+      return `## ⚡ REAL-TIME TEAM TELEMETRY ANALYSIS
 
-Overall Team Progress: **${overallPct}%** completed across all stations.
+Overall Progress: **${overallPct}%** completed across all stations.
 - 👑 **Mohannad (Modeling)**: ${mohPct}% (${mohDone}/${mohTasks.length} tasks)
 - 📊 **Moayad (Data)**: ${moaPct}% (${moaDone}/${moaTasks.length} tasks)
 - 🛡️ **Dyaa (Red Team)**: ${dyaPct}% (${dyaDone}/${dyaTasks.length} tasks)
 
-Current Best Result:
-${bestExp ? `- **Model**: ${bestExp.model} (${bestExp.name})\n- **Best Local CV**: ${bestExp.cvScore} ${bestExp.cvStd ? `(±${bestExp.cvStd})` : ''}\n- **Public LB**: ${bestExp.lbScore || 'Pending'}` : '- No verified baseline logged yet.'}
+Modeling Benchmark:
+${bestExp ? `- **Current Best Model**: ${bestExp.model} (${bestExp.name})\n- **Best Local CV**: ${bestExp.cvScore}\n- **Public LB**: ${bestExp.lbScore || 'Awaiting submission'}` : '- No verified baseline logged yet. Mohannad must build and run Experiment EXP-001.'}
 
-Active Submissions Used: **${subsUsed} / ${subLimit}** (${subsRemaining} remaining).
-
----
-
-## 🚨 RISKS
-
-${activeBlockers.length > 0 ? activeBlockers.map(b => `1. **${b.severity} BLOCKER**: ${b.title} (${b.owner}) — ${b.description}`).join('\n') : '1. ✅ No active critical blockers logged right now.'}
-${subsRemaining <= 2 ? `2. ⚠️ **Low Submissions Warning**: Only ${subsRemaining} submissions remaining today!` : ''}
-${!dyaTasks.find(t => t.id === 'dya_3')?.completed ? '3. ⚠️ **Validation Risk**: Dyaa has not completed the Validation Strategy Attack yet.' : ''}
+Submission Quota: **${subsUsed} / ${subLimit}** (${subsRemaining} remaining).
 
 ---
 
-## 🎯 NEXT 3 ACTIONS
+## 🚨 RISK AUDIT & VALIDATION ANALYSIS
 
-1️⃣ **Mohannad** → ${mohPct < 50 ? 'Complete validation scheme setup and establish first baseline.' : 'Test blending CatBoost OOF predictions with Dyaa alternative model.'}
-
-2️⃣ **Moayad** → ${moaPct < 80 ? 'Finish train/test distribution shift analysis and export engineered features.' : 'Generate group-aggregated statistical features for the next experiment.'}
-
-3️⃣ **Dyaa** → ${!dyaTasks.find(t => t.id === 'dya_7')?.completed ? 'Run full code audit for target leakage and stand by for Submission QA.' : 'Prepare alternative LightGBM model pipeline to cross-verify CatBoost findings.'}
+${activeBlockers.length > 0 ? activeBlockers.map(b => `1. **[${b.severity}] BLOCKER**: ${b.title} (${b.owner}) — ${b.description}`).join('\n') : '1. ✅ Zero critical pipeline blockers reported.'}
+${subsRemaining <= 2 ? `2. ⚠️ **Low Submissions Alert**: Only ${subsRemaining} submissions remaining today!` : ''}
+${experiments.length === 0 ? '3. ⚠️ **Baseline Missing**: Create simplest end-to-end pipeline before adding feature complexity.' : ''}
 
 ---
 
-## 🧠 AI TOOL RECOMMENDATION
+## 🎯 NEXT 3 STRATEGIC ACTIONS
 
-Use:
-- 🧠 **ChatGPT** → Overall modeling strategy & metric optimization logic.
-- 🔵 **Gemini Pro** → Data distribution shift and EDA document analysis.
-- 🟠 **Claude** → Code review, leakage verification & Red Team audit.
-- 💻 **Codex** → Generating rapid notebook execution scripts.`;
+1️⃣ **Mohannad** → ${mohPct < 40 ? 'Read challenge rules and establish 5-Fold Stratified CV baseline.' : 'Train a second GBDT architecture (LightGBM) for model diversity.'}
+
+2️⃣ **Moayad** → ${moaPct < 60 ? 'Run leakage audit and train/test distribution shift analysis.' : 'Generate group statistics & domain ratio features.'}
+
+3️⃣ **Dyaa** → ${!dyaTasks.find(t => t.id === 'dya_3')?.completed ? 'Audit preprocessor code to ensure zero target encoding leakage across folds.' : 'Build independent XGBoost pipeline for ensembling.'}
+
+---
+
+## 🧠 AI TOOL ASSIGNMENTS
+
+- 🧠 **ChatGPT** → Multi-class loss function tuning & metric formulation.
+- 🔵 **Gemini Pro** → Data distribution shift analysis & document inspection.
+- 🟠 **Claude** → Code review & Red Team validation attack.`;
 
     case 'WHAT_NEXT':
-      return `## 🎯 IMMEDIATE TEAM ACTION PLAN
+      return `## 🎯 IMMEDIATE ACTION PLAN
 
-Current Objective: **"${competition.currentObjective || 'Maximize Local CV'}"**
+Current Objective: **"${competition.currentObjective}"**
 
----
-
-## 🎯 NEXT 3 ACTIONS
-
-1️⃣ **Moayad (Data)**: Export approved feature matrix and deliver to Mohannad.
-
-2️⃣ **Mohannad (Lead)**: Execute Experiment EXP-00${experiments.length + 1} incorporating new features using 5-Fold Stratified CV.
-
-3️⃣ **Dyaa (Red Team)**: Conduct parallel code review on feature generation scripts to ensure zero test-data leakage.`;
+1️⃣ **Moayad**: Complete leakage investigation & deliver initial feature matrix.
+2️⃣ **Mohannad**: Build baseline model & log Experiment EXP-001 with 5-Fold CV.
+3️⃣ **Dyaa**: Verify local metric logic against scikit-learn standard.`;
 
     case 'FIND_RISKS':
-      return `## 🚨 COMPREHENSIVE RISK AUDIT
+      return `## 🚨 RISK AUDIT & ANOMALY SCAN
 
-Found **${activeBlockers.length} Active Blocker(s)** & potential validation threats:
+- **Active Blockers**: ${activeBlockers.length}
+- **Fold Leakage Verification**: ${dyaTasks.find(t => t.id === 'dya_3')?.completed ? '✅ Verified by Dyaa' : '🔴 PENDING (High risk)'}
+- **Data Report**: ${reports.find(r => r.type === 'DATA_REPORT') ? '✅ Submitted' : '🟡 Pending from Moayad'}`;
 
-${activeBlockers.length ? activeBlockers.map((b, i) => `${i + 1}. **[${b.severity}] ${b.title}**: ${b.description}`).join('\n') : '✅ Zero blocking issues reported.'}
+    case 'ENSEMBLE_GEN':
+      return `## 🧬 MODEL ENSEMBLE & BLENDING STRATEGY
 
-### 🛡️ Validation & Leakage Check:
-- **Group Leakage**: ${dyaTasks.find(t => t.id === 'dya_3')?.completed ? '✅ Verified by Dyaa' : '🔴 NOT VERIFIED YET (Action required by Dyaa)'}
-- **Data Report**: ${reports.find(r => r.type === 'DATA_REPORT') ? '✅ Delivered to Team HQ' : '🟡 Pending from Moayad'}`;
-
-    case 'HOW_TO_IMPROVE':
-      return `## 📈 CV & LEADERBOARD BOOSTING STRATEGY
-
-Current Best CV: **${bestExp ? bestExp.cvScore : 'N/A'}**
-
----
-
-## 🎯 4 STRATEGIC BOOSTS
-
-1️⃣ **Feature Interactions**: Combine top correlated features into ratios (\`feat_A / (feat_B + 1e-5)\`) and log1p transforms.
-2️⃣ **Categorical Encoding**: Apply Target Encoding inside CV loop or Out-Of-Fold Frequency Encoding.
-3️⃣ **Hyperparameter Tuning**: Increase \`n_estimators\` to 3000 with early stopping rounds = 100 and lower learning rate.
-4️⃣ **Model Diversity & Blending**: Train an XGBoost / ExtraTrees model (Dyaa) and blend OOF predictions.`;
-
-    case 'WORKLOAD_BALANCE':
-      return `## ⚖️ TEAM WORKLOAD & VELOCITY REPORT
-
-- 👑 **Mohannad**: ${mohPct}% completion (${mohDone}/${mohTasks.length} tasks)
-- 📊 **Moayad**: ${moaPct}% completion (${moaDone}/${moaTasks.length} tasks)
-- 🛡️ **Dyaa**: ${dyaPct}% completion (${dyaDone}/${dyaTasks.length} tasks)
-
-**Velocity Summary**: ${moaPct >= mohPct ? 'Data pipeline is ahead of modeling. Modeling team has sufficient feature assets.' : 'Data engineering is bottlenecking modeling. Prioritize Moayad feature delivery.'}`;
-
-    case 'SUGGEST_EXPERIMENT':
-      return `## 🧪 NEXT HIGH-LEVERAGE EXPERIMENT PROPOSAL
-
-**Experiment Code**: EXP-00${experiments.length + 1}
-**Target Model**: CatBoostClassifier + LightGBM Ensemble
-**Hypothesis**: Combining Moayad's interaction ratios with CatBoost categorical handling will boost performance.`;
-
-    case 'FINAL_SUBMISSION_REVIEW':
-      return `## 🏆 FINAL SUBMISSION READINESS AUDIT
-
-- **Tasks Completed**: ${overallPct}% (${tasks.filter(t => t.completed).length}/${tasks.length})
-- **Active Blockers**: ${activeBlockers.length === 0 ? '🟢 ZERO BLOCKERS' : `🔴 ${activeBlockers.length} UNRESOLVED BLOCKERS`}
-- **Best Model Verified**: ${bestExp ? `✅ ${bestExp.model} (CV: ${bestExp.cvScore})` : '❌ NO MODEL LOGGED'}`;
+Grandmaster Recommendations:
+1. **Model Diversity**: Combine CatBoost + LightGBM + XGBoost + ExtraTrees.
+2. **Blending Scheme**: Use rank averaging or Nelder-Mead optimization on OOF predictions.
+3. **Correlation Limit**: Keep pairwise OOF correlation < 0.85 for optimal ensemble gain.`;
 
     default:
       return generateAnalystResponse('ANALYZE_TEAM', state, 'en');

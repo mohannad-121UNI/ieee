@@ -1,146 +1,131 @@
 import React, { useState, useEffect } from 'react';
 import { useWarRoom } from '../context/WarRoomContext';
-import { generateAnalystResponse } from '../services/aiAnalyst';
-import { Bot, Sparkles, RefreshCw, AlertCircle, Key, Check } from 'lucide-react';
+import { queryFrontierAI, generateAnalystResponse } from '../services/aiAnalyst';
+import { Bot, Sparkles, RefreshCw, Key, Check, Cpu, Zap, Dna, ShieldAlert, TrendingUp } from 'lucide-react';
 
 export default function AIAnalystPanel() {
   const warRoomState = useWarRoom();
   const { lang, t } = warRoomState;
+  const isAr = lang === 'ar';
 
   const [activeQuery, setActiveQuery] = useState('ANALYZE_TEAM');
   const [customPrompt, setCustomPrompt] = useState('');
+  const [selectedModel, setSelectedModel] = useState('gemini-1.5-pro');
   const [aiOutput, setAiOutput] = useState(() => generateAnalystResponse('ANALYZE_TEAM', warRoomState, lang));
   const [isThinking, setIsThinking] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('nextaura_gemini_key') || '');
   const [showKeyModal, setShowKeyModal] = useState(false);
 
-  // Update response when language changes
   useEffect(() => {
     setAiOutput(generateAnalystResponse(activeQuery, warRoomState, lang));
   }, [lang]);
 
-  const handleAction = (queryType) => {
+  const handleAction = async (queryType, customText = '') => {
     setActiveQuery(queryType);
     setIsThinking(true);
-    setTimeout(() => {
-      setAiOutput(generateAnalystResponse(queryType, warRoomState, lang));
-      setIsThinking(false);
-    }, 350);
+
+    const output = await queryFrontierAI({
+      queryType,
+      prompt: customText,
+      state: warRoomState,
+      lang,
+      apiKey,
+      selectedModel
+    });
+
+    setAiOutput(output);
+    setIsThinking(false);
   };
 
-  const handleCustomSubmit = async (e) => {
+  const handleCustomSubmit = (e) => {
     e.preventDefault();
     if (!customPrompt.trim()) return;
-    setIsThinking(true);
-
-    if (apiKey.trim()) {
-      // Call live Gemini API if key is entered
-      try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey.trim()}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `You are Aura AI Competition Analyst for team NextAura (Mohannad, Moayad, Dyaa). Language: ${lang}. Context: ${JSON.stringify({
-                  comp: warRoomState.competition,
-                  tasksCompleted: warRoomState.tasks.filter(t=>t.completed).length,
-                  totalTasks: warRoomState.tasks.length,
-                  experiments: warRoomState.experiments,
-                  blockers: warRoomState.blockers.filter(b=>!b.resolved)
-                })}. User query: ${customPrompt}`
-              }]
-            }]
-          })
-        });
-
-        const data = await response.json();
-        if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-          setAiOutput(data.candidates[0].content.parts[0].text);
-          setCustomPrompt('');
-          setIsThinking(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Gemini API Error:', err);
-      }
-    }
-
-    // Fallback to intelligent engine
-    setTimeout(() => {
-      const response = generateAnalystResponse('WHAT_NEXT', warRoomState, lang);
-      setAiOutput(`## 🧠 ${lang === 'ar' ? 'تحليل لـ' : 'ANALYSIS FOR'}: "${customPrompt}"\n\n${response}`);
-      setCustomPrompt('');
-      setIsThinking(false);
-    }, 400);
+    handleAction('CUSTOM', customPrompt);
+    setCustomPrompt('');
   };
 
   const saveKey = () => {
     localStorage.setItem('nextaura_gemini_key', apiKey);
     setShowKeyModal(false);
-    warRoomState.addNotification('AI Key Saved 🔑', 'Gemini AI model inference connected.', 'success');
+    warRoomState.addNotification('AI Key Saved 🔑', 'Frontier AI model inference connected.', 'success');
   };
 
   return (
     <div className="glass-panel" style={{ padding: '28px', borderTop: '4px solid var(--accent-cyan)' }}>
-      {/* Header */}
+      {/* Top Bar Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
-            width: '46px',
-            height: '46px',
-            borderRadius: '12px',
+            width: '48px',
+            height: '48px',
+            borderRadius: '14px',
             background: 'linear-gradient(135deg, #00F0FF, #7000FF)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 0 15px rgba(0, 240, 255, 0.4)'
+            boxShadow: '0 0 20px rgba(0, 240, 255, 0.5)'
           }}>
-            <Bot size={26} color="#060911" />
+            <Bot size={28} color="#060911" />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {t.aiAnalystTitle}
-              <span className="badge badge-cyan" style={{ fontSize: '0.65rem' }}>AI Teammate #4</span>
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: '900' }}>
+                {t.aiAnalystTitle}
+              </h3>
+              <span className="badge badge-cyan" style={{ fontSize: '0.65rem' }}>
+                <Cpu size={12} /> GRANDMASTER ENGINE
+              </span>
+            </div>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              {t.aiAnalystSub}
+              {isAr ? 'محلل الاستراتيجية التنافسية وبناء النماذج المتقدم' : 'Elite Competition AI Strategist & Telemetry Intelligence'}
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        {/* AI Model Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <select
+            value={selectedModel}
+            onChange={e => setSelectedModel(e.target.value)}
+            style={{ padding: '6px 12px', fontSize: '0.82rem', width: 'auto', background: 'rgba(21, 31, 54, 0.9)', borderColor: 'var(--border-cyan)', color: 'var(--accent-cyan)' }}
+          >
+            <option value="gemini-1.5-pro">⚡ Gemini 1.5/2.5 Pro (Grandmaster)</option>
+            <option value="gemini-1.5-flash">⚡ Gemini Flash (Fast Reasoning)</option>
+            <option value="heuristic">🔮 Grandmaster Heuristic Engine</option>
+          </select>
+
           <button
             onClick={() => setShowKeyModal(true)}
             className="btn-secondary"
-            style={{ padding: '8px 12px', fontSize: '0.8rem', borderColor: apiKey ? 'var(--accent-green)' : undefined }}
+            style={{ padding: '7px 12px', fontSize: '0.8rem', borderColor: apiKey ? 'var(--accent-green)' : undefined, color: apiKey ? 'var(--accent-green)' : undefined }}
           >
-            <Key size={14} /> {apiKey ? '🔑 Key Connected' : t.configureKey}
+            <Key size={14} /> {apiKey ? (isAr ? '🔑 المفتاح متصل' : '🔑 Key Connected') : t.configureKey}
           </button>
 
           <button
             onClick={() => handleAction(activeQuery)}
             className="btn-secondary"
-            style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+            style={{ padding: '7px 14px', fontSize: '0.8rem' }}
           >
             <RefreshCw size={14} className={isThinking ? 'animate-pulse-glow' : ''} /> {t.refreshIntel}
           </button>
         </div>
       </div>
 
-      {/* Quick Action Buttons Toolbar */}
+      {/* Action Buttons */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
         <button
           onClick={() => handleAction('ANALYZE_TEAM')}
           className="btn-secondary"
           style={{
             fontSize: '0.8rem',
-            padding: '7px 12px',
+            padding: '8px 14px',
             borderColor: activeQuery === 'ANALYZE_TEAM' ? 'var(--accent-cyan)' : undefined,
-            color: activeQuery === 'ANALYZE_TEAM' ? 'var(--accent-cyan)' : undefined
+            color: activeQuery === 'ANALYZE_TEAM' ? 'var(--accent-cyan)' : undefined,
+            background: activeQuery === 'ANALYZE_TEAM' ? 'rgba(0, 240, 255, 0.12)' : undefined
           }}
         >
-          {t.btnAnalyze}
+          🧠 {t.btnAnalyze}
         </button>
 
         <button
@@ -148,12 +133,13 @@ export default function AIAnalystPanel() {
           className="btn-secondary"
           style={{
             fontSize: '0.8rem',
-            padding: '7px 12px',
+            padding: '8px 14px',
             borderColor: activeQuery === 'WHAT_NEXT' ? 'var(--accent-cyan)' : undefined,
-            color: activeQuery === 'WHAT_NEXT' ? 'var(--accent-cyan)' : undefined
+            color: activeQuery === 'WHAT_NEXT' ? 'var(--accent-cyan)' : undefined,
+            background: activeQuery === 'WHAT_NEXT' ? 'rgba(0, 240, 255, 0.12)' : undefined
           }}
         >
-          {t.btnWhatNext}
+          🎯 {t.btnWhatNext}
         </button>
 
         <button
@@ -161,12 +147,27 @@ export default function AIAnalystPanel() {
           className="btn-secondary"
           style={{
             fontSize: '0.8rem',
-            padding: '7px 12px',
+            padding: '8px 14px',
             borderColor: activeQuery === 'FIND_RISKS' ? 'var(--accent-red)' : undefined,
-            color: activeQuery === 'FIND_RISKS' ? 'var(--accent-red)' : undefined
+            color: activeQuery === 'FIND_RISKS' ? 'var(--accent-red)' : undefined,
+            background: activeQuery === 'FIND_RISKS' ? 'rgba(239, 68, 68, 0.12)' : undefined
           }}
         >
-          {t.btnFindRisks}
+          🚨 {t.btnFindRisks}
+        </button>
+
+        <button
+          onClick={() => handleAction('ENSEMBLE_GEN')}
+          className="btn-secondary"
+          style={{
+            fontSize: '0.8rem',
+            padding: '8px 14px',
+            borderColor: activeQuery === 'ENSEMBLE_GEN' ? 'var(--accent-purple)' : undefined,
+            color: activeQuery === 'ENSEMBLE_GEN' ? 'var(--accent-purple)' : undefined,
+            background: activeQuery === 'ENSEMBLE_GEN' ? 'rgba(168, 85, 247, 0.12)' : undefined
+          }}
+        >
+          🧬 {isAr ? 'استراتيجية الـ Ensemble' : 'Ensemble Strategy'}
         </button>
 
         <button
@@ -174,12 +175,12 @@ export default function AIAnalystPanel() {
           className="btn-secondary"
           style={{
             fontSize: '0.8rem',
-            padding: '7px 12px',
+            padding: '8px 14px',
             borderColor: activeQuery === 'HOW_TO_IMPROVE' ? 'var(--accent-green)' : undefined,
             color: activeQuery === 'HOW_TO_IMPROVE' ? 'var(--accent-green)' : undefined
           }}
         >
-          {t.btnImprove}
+          📈 {t.btnImprove}
         </button>
 
         <button
@@ -187,97 +188,74 @@ export default function AIAnalystPanel() {
           className="btn-secondary"
           style={{
             fontSize: '0.8rem',
-            padding: '7px 12px',
+            padding: '8px 14px',
             borderColor: activeQuery === 'WORKLOAD_BALANCE' ? 'var(--accent-amber)' : undefined,
             color: activeQuery === 'WORKLOAD_BALANCE' ? 'var(--accent-amber)' : undefined
           }}
         >
-          {t.btnWorkload}
-        </button>
-
-        <button
-          onClick={() => handleAction('SUGGEST_EXPERIMENT')}
-          className="btn-secondary"
-          style={{
-            fontSize: '0.8rem',
-            padding: '7px 12px',
-            borderColor: activeQuery === 'SUGGEST_EXPERIMENT' ? 'var(--accent-purple)' : undefined,
-            color: activeQuery === 'SUGGEST_EXPERIMENT' ? 'var(--accent-purple)' : undefined
-          }}
-        >
-          {t.btnSuggestExp}
-        </button>
-
-        <button
-          onClick={() => handleAction('FINAL_SUBMISSION_REVIEW')}
-          className="btn-secondary"
-          style={{
-            fontSize: '0.8rem',
-            padding: '7px 12px',
-            borderColor: activeQuery === 'FINAL_SUBMISSION_REVIEW' ? 'var(--accent-green)' : undefined,
-            color: activeQuery === 'FINAL_SUBMISSION_REVIEW' ? 'var(--accent-green)' : undefined
-          }}
-        >
-          {t.btnFinalReview}
+          ⚖️ {t.btnWorkload}
         </button>
       </div>
 
-      {/* Free-form Prompt Input Box */}
+      {/* Free-form Prompt Input */}
       <form onSubmit={handleCustomSubmit} style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
         <input
           type="text"
           value={customPrompt}
           onChange={e => setCustomPrompt(e.target.value)}
           placeholder={t.askAiPlaceholder}
-          style={{ flexGrow: 1, padding: '10px 14px', fontSize: '0.9rem' }}
+          style={{ flexGrow: 1, padding: '12px 16px', fontSize: '0.92rem' }}
         />
-        <button type="submit" className="btn-primary" style={{ padding: '10px 18px' }}>
-          <Sparkles size={16} /> {t.askAiBtn}
+        <button type="submit" className="btn-primary" style={{ padding: '12px 22px' }}>
+          <Sparkles size={18} /> {t.askAiBtn}
         </button>
       </form>
 
-      {/* Output Intelligence Box */}
+      {/* Output Display Box */}
       <div 
         style={{
-          background: 'rgba(10, 15, 29, 0.9)',
+          background: 'rgba(8, 12, 24, 0.95)',
           border: '1px solid var(--border-cyan)',
-          borderRadius: '14px',
-          padding: '20px',
+          borderRadius: '16px',
+          padding: '24px',
           fontFamily: 'var(--font-body)',
-          fontSize: '0.92rem',
-          lineHeight: '1.7',
+          fontSize: '0.95rem',
+          lineHeight: '1.8',
           whiteSpace: 'pre-line',
           color: 'var(--text-main)',
-          boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.4)'
+          boxShadow: 'inset 0 0 25px rgba(0, 0, 0, 0.5)'
         }}
       >
         {isThinking ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-cyan)', padding: '20px 0' }}>
-            <Sparkles size={20} className="animate-pulse-glow" /> Analyzing multi-station telemetry...
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--accent-cyan)', padding: '24px 0', fontSize: '1rem' }}>
+            <Sparkles size={24} className="animate-pulse-glow" /> 
+            {isAr ? 'جاري تحليل كامل بيانات الفريق وتجهيز التوصيات الاستراتيجية...' : 'Analyzing full multi-station telemetry & calculating Grandmaster strategy...'}
           </div>
         ) : (
           aiOutput
         )}
       </div>
 
-      {/* Key Modal */}
+      {/* Key Configure Modal */}
       {showKeyModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '500px' }}>
-            <h3 style={{ fontSize: '1.2rem', marginBottom: '14px' }}>🔑 Configure Gemini AI API Key</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
-              Enter your Gemini API key to enable direct LLM reasoning capabilities inside Aura Analyst.
+          <div className="modal-content" style={{ maxWidth: '520px' }}>
+            <h3 style={{ fontSize: '1.3rem', marginBottom: '12px' }}>🔑 {isAr ? 'إعداد مفتاح الذكاء الاصطناعي Gemini' : 'Configure Gemini AI Key'}</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.5' }}>
+              {isAr 
+                ? 'أدخل مفتاح Gemini API لربط المحلل مباشرة بنماذج Gemini 1.5/2.5 Pro الفائقة للحصول على تحليلات تفصيلية عميقة.'
+                : 'Enter your Gemini API key to query Gemini 1.5/2.5 Pro directly with full telemetry context.'}
             </p>
             <input
               type="text"
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
               placeholder="AIzaSy..."
-              style={{ marginBottom: '16px' }}
+              style={{ marginBottom: '18px' }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button onClick={() => setShowKeyModal(false)} className="btn-secondary">Cancel</button>
-              <button onClick={saveKey} className="btn-primary"><Check size={14} /> Save Key</button>
+              <button onClick={() => setShowKeyModal(false)} className="btn-secondary">{t.cancel}</button>
+              <button onClick={saveKey} className="btn-primary"><Check size={14} /> {t.save}</button>
             </div>
           </div>
         </div>
