@@ -139,7 +139,7 @@ ALTER TABLE public.guided_steps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- ========================================================
--- SAFE POLICIES (DROP EXISTING FIRST TO PREVENT 42710 ERROR)
+-- SAFE POLICIES (DROP EXISTING FIRST TO PREVENT ERRORS)
 -- ========================================================
 DROP POLICY IF EXISTS "Allow public read/write competitions" ON public.competitions;
 DROP POLICY IF EXISTS "Allow public read/write tasks" ON public.tasks;
@@ -164,7 +164,7 @@ CREATE POLICY "Allow public read/write guided_steps" ON public.guided_steps FOR 
 CREATE POLICY "Allow public read/write notifications" ON public.notifications FOR ALL USING (true) WITH CHECK (true);
 
 -- ========================================================
--- SAFE REALTIME REPLICATION SETUP (PREVENTS DUPLICATE ERRORS)
+-- SAFE REALTIME REPLICATION SETUP
 -- ========================================================
 DO $$
 BEGIN
@@ -217,3 +217,16 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.guided_steps;
   END IF;
 END $$;
+
+-- ========================================================
+-- OPTIONAL RESET SCRIPT (RUN TO WIPE ALL TEST DATA TO 0%)
+-- ========================================================
+-- TRUNCATE TABLE public.notifications CASCADE;
+-- TRUNCATE TABLE public.experiments CASCADE;
+-- TRUNCATE TABLE public.submissions CASCADE;
+-- TRUNCATE TABLE public.blockers CASCADE;
+-- TRUNCATE TABLE public.activity_feed CASCADE;
+-- TRUNCATE TABLE public.reports CASCADE;
+-- TRUNCATE TABLE public.team_notes CASCADE;
+-- TRUNCATE TABLE public.tasks CASCADE;
+-- TRUNCATE TABLE public.guided_steps CASCADE;

@@ -3,13 +3,19 @@ import { useWarRoom } from '../context/WarRoomContext';
 import CompetitionTimer from './CompetitionTimer';
 import UserGuideModal from './UserGuideModal';
 import NotificationCenter from './NotificationCenter';
-import { Globe, Users, Shield, Cpu, Compass, BookOpen, Volume2, VolumeX } from 'lucide-react';
+import { Globe, Users, Shield, Cpu, Compass, BookOpen, Volume2, VolumeX, RotateCcw, AlertTriangle } from 'lucide-react';
 
 export default function Navbar() {
-  const { activeStation, setStation, lang, toggleLanguage, soundEnabled, toggleSound, t } = useWarRoom();
+  const { activeStation, setStation, lang, toggleLanguage, soundEnabled, toggleSound, resetAllData, t } = useWarRoom();
   const [showGuide, setShowGuide] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const isAr = lang === 'ar';
+
+  const handleConfirmReset = () => {
+    resetAllData();
+    setShowResetConfirm(false);
+  };
 
   return (
     <>
@@ -135,6 +141,16 @@ export default function Navbar() {
           <CompetitionTimer />
           <NotificationCenter />
 
+          {/* Reset All Data Button */}
+          <button
+            onClick={() => setShowResetConfirm(true)}
+            className="btn-secondary"
+            style={{ padding: '8px 12px', fontSize: '0.82rem', borderColor: 'var(--accent-red)', color: 'var(--accent-red)' }}
+            title={isAr ? 'تصفير كل البيانات للبدء من جديد' : 'Reset all test data & start fresh'}
+          >
+            <RotateCcw size={15} /> {isAr ? '🔄 تصفير البيانات' : '🔄 Reset All'}
+          </button>
+
           {/* Sound Toggle */}
           <button
             onClick={toggleSound}
@@ -176,6 +192,29 @@ export default function Navbar() {
           </button>
         </div>
       </nav>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="modal-overlay" style={{ zIndex: 10010 }}>
+          <div className="modal-content glass-panel" style={{ maxWidth: '460px', padding: '24px', textAlign: 'center', borderTop: '4px solid var(--accent-red)' }}>
+            <AlertTriangle size={36} color="var(--accent-red)" style={{ margin: '0 auto 12px auto' }} />
+            <h3 style={{ fontSize: '1.3rem', fontWeight: '800', color: 'var(--accent-red)', marginBottom: '8px' }}>
+              {isAr ? '🔄 هل أنت تأكد من تصفير كافة البيانات؟' : '🔄 Confirm Complete Reset?'}
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: '1.5' }}>
+              {isAr 
+                ? 'سيتم مسح كافة التجارب الاختيارية، وتصفير نسبة الإنجاز والخطوات والعداد والبدء من الصفر تماماً (0%).'
+                : 'This will wipe all test steps, experiments, blockers, notifications, and reset progress to 0%.'}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+              <button onClick={() => setShowResetConfirm(false)} className="btn-secondary">{t.cancel}</button>
+              <button onClick={handleConfirmReset} className="btn-primary" style={{ background: 'var(--accent-red)' }}>
+                {isAr ? 'نعم، تصفير الآن (0%)' : 'Yes, Reset All to 0%'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Guide Modal */}
       <UserGuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />

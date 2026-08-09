@@ -3,7 +3,7 @@ import { INITIAL_COMPETITION, INITIAL_TASKS, INITIAL_EXPERIMENTS, INITIAL_SUBMIS
 import { INITIAL_GUIDED_STEPS, PIPELINE_PHASES } from '../config/guidedPipelineData';
 import { TRANSLATIONS } from '../config/translations';
 import { playSound } from '../services/audioFeedback';
-import { sendDesktopNotification, pushSupabaseNotification, requestBrowserPermission } from '../services/realtimeSync';
+import { sendDesktopNotification, pushSupabaseNotification } from '../services/realtimeSync';
 import { supabase, warRoomChannel } from '../services/supabase';
 
 const WarRoomContext = createContext();
@@ -43,14 +43,6 @@ export function WarRoomProvider({ children }) {
   useEffect(() => {
     if (!supabase) return;
 
-    // Fetch initial notifications from database
-    supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(20)
-      .then(({ data, error }) => {
-        if (data && data.length > 0) {
-          setNotifications(data);
-        }
-      });
-
     // Realtime Postgres Change Listener on notifications table
     const notifChannel = supabase
       .channel('public_notifications_realtime')
@@ -77,6 +69,8 @@ export function WarRoomProvider({ children }) {
             if (prev.some(n => n.id === notif.id)) return prev;
             return [notif, ...prev];
           });
+        } else if (e.data && e.data.type === 'RESET_ALL') {
+          handleLocalReset();
         }
       };
     }
@@ -94,8 +88,57 @@ export function WarRoomProvider({ children }) {
     setSoundEnabled(prev => !prev);
   };
 
+  // CLEAN RESET FROM SCRATCH
+  const handleLocalReset = () => {
+    setCompetition({
+      ...INITIAL_COMPETITION,
+      timerStarted: false,
+      endTime: null,
+      startTime: new Date().toISOString()
+    });
+    setTasks(INITIAL_TASKS.map(t => ({ ...t, completed: false, completedAt: null, notes: '' })));
+    setGuidedSteps(INITIAL_GUIDED_STEPS.map(s => ({
+      ...s,
+      status: s.id === 1 ? 'READY' : 'LOCKED',
+      completedAt: null,
+      blockedReason: null
+    })));
+    setExperiments([]);
+    setSubmissions([]);
+    setBlockers([]);
+    setNotes([]);
+    setReports([]);
+    setActivityFeed([]);
+    setNotifications([]);
+  };
+
+  const resetAllData = async () => {
+    handleLocalReset();
+
+    // Broadcast reset to tabs
+    if (warRoomChannel) {
+      warRoomChannel.postMessage({ type: 'RESET_ALL' });
+    }
+
+    // Truncate Supabase DB tables if connected
+    if (supabase) {
+      try {
+        await supabase.from('notifications').delete().neq('id', 'keep_none');
+        await supabase.from('experiments').delete().neq('id', 'keep_none');
+        await supabase.from('submissions').delete().neq('id', 'keep_none');
+        await supabase.from('blockers').delete().neq('id', 'keep_none');
+        await supabase.from('activity_feed').delete().neq('id', 'keep_none');
+        await supabase.from('guided_steps').delete().gte('id', 0);
+        await supabase.from('tasks').delete().neq('id', 'keep_none');
+      } catch (err) {
+        console.warn('Supabase DB reset warning:', err);
+      }
+    }
+
+    addNotification('🔄 Reset Complete', 'All competition telemetry reset to 0% fresh start.', 'info');
+  };
+
   const addNotification = (title, message, type = 'info', sender = 'System') => {
-    // 1. Add locally
     const notifObj = {
       id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       title,
@@ -105,8 +148,6 @@ export function WarRoomProvider({ children }) {
       created_at: new Date().toISOString()
     };
     setNotifications(prev => [notifObj, ...prev]);
-
-    // 2. Push to Supabase Database for cross-laptop realtime broadcast
     pushSupabaseNotification(title, message, type, sender);
   };
 
@@ -254,7 +295,8 @@ export function WarRoomProvider({ children }) {
     completeStep,
     markStepBlocked,
     bestCvModal,
-    setBestCvModal
+    setBestCvModal,
+    resetAllData
   };
 
   return (
