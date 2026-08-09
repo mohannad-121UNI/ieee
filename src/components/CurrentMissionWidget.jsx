@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useWarRoom } from '../context/WarRoomContext';
-import { Compass, CheckCircle, Copy, Check, Lock, Play, AlertOctagon, ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Bot, Sparkles, Shield, Cpu, Users } from 'lucide-react';
+import DatasetUploadModal from './DatasetUploadModal';
+import { Compass, CheckCircle, Copy, Check, Lock, Play, AlertOctagon, ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Bot, Sparkles, Shield, Cpu, Users, Database, Upload } from 'lucide-react';
 
 export default function CurrentMissionWidget({ filterMember = null }) {
   const { guidedSteps, completeStep, markStepBlocked, lang, t, addNotification } = useWarRoom();
@@ -8,6 +9,7 @@ export default function CurrentMissionWidget({ filterMember = null }) {
 
   const [copied, setCopied] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [showDataModal, setShowDataModal] = useState(false);
   const [blockedReasonInput, setBlockedReasonInput] = useState('');
   const [isBlockingModal, setIsBlockingModal] = useState(false);
 
@@ -230,7 +232,15 @@ export default function CurrentMissionWidget({ filterMember = null }) {
           {isAr ? currentStep.handoffMessageAr : currentStep.handoffMessageEn}
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setShowDataModal(true)}
+            className="btn-secondary"
+            style={{ borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)', fontSize: '0.85rem' }}
+          >
+            <Upload size={16} /> {isAr ? '📁 رفع/تخزين ملف البيانات' : '📁 Upload / Store Dataset'}
+          </button>
+
           <button
             onClick={() => setIsBlockingModal(true)}
             className="btn-secondary"
@@ -247,6 +257,8 @@ export default function CurrentMissionWidget({ filterMember = null }) {
             <CheckCircle size={18} /> {isAr ? '✅ إكمال الخطوة وتمرير المهمة' : '✅ MARK STEP DONE & HANDOFF'}
           </button>
         </div>
+
+        <DatasetUploadModal isOpen={showDataModal} onClose={() => setShowDataModal(false)} />
       </div>
 
       {/* Blocker Modal */}
